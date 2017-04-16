@@ -1,19 +1,18 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#if defined(VSNRAY_HAVE_TIFF)
+#include <common/config.h>
 
-#ifndef NDEBUG
-#include <iostream>
-#include <ostream>
-#endif
-
+#if VSNRAY_COMMON_HAVE_TIFF
 #include <tiffio.h>
+#endif
 
 #include "tiff_image.h"
 
 namespace visionaray
 {
+
+#if VSNRAY_COMMON_HAVE_TIFF
 
 //-------------------------------------------------------------------------------------------------
 // RAII wrapper for tiff files
@@ -42,8 +41,11 @@ private:
 
 };
 
+#endif
+
 bool tiff_image::load(std::string const& filename)
 {
+#if VSNRAY_COMMON_HAVE_TIFF
     tiff_file file(filename.c_str(), "r");
 
     if (!file.good())
@@ -69,8 +71,11 @@ bool tiff_image::load(std::string const& filename)
     }
 
     return true;
+#else
+    VSNRAY_UNUSED(filename);
+
+    return false;
+#endif
 }
 
 } // visionaray
-
-#endif // VSNRAY_HAVE_TIFF

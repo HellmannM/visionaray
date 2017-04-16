@@ -28,12 +28,10 @@
 
 #endif
 
-#include <OpenGL/gl.h>
 #include <GLUT/glut.h>
 
 #else // VSNRAY_OS_DARWIN
 
-#include <GL/gl.h>
 #include <GL/glut.h>
 
 #endif
@@ -51,7 +49,7 @@
 #include <visionaray/point_light.h>
 #include <visionaray/scheduler.h>
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__MINGW64__)
 #include <visionaray/experimental/tbb_sched.h>
 #endif
 
@@ -85,6 +83,7 @@ struct renderer : viewer_type
 //  using scalar_type_cpu           = float;
     using scalar_type_cpu           = simd::float4;
 //  using scalar_type_cpu           = simd::float8;
+//  using scalar_type_cpu           = simd::float16;
     using scalar_type_gpu           = float;
     using ray_type_cpu              = basic_ray<scalar_type_cpu>;
     using ray_type_gpu              = basic_ray<scalar_type_gpu>;
@@ -113,6 +112,12 @@ struct renderer : viewer_type
     {
         Binned = 0,  // Binned SAH builder, no spatial splits
         Split        // Split BVH, also binned and with SAH
+    };
+
+    enum color_space
+    {
+        RGB = 0,
+        SRGB
     };
 
 
@@ -176,6 +181,29 @@ struct renderer : viewer_type
             cl::init(this->ssaa_samples)
             ) );
 
+        add_cmdline_option( cl::makeOption<vec3&, cl::ScalarType>(
+            [&](StringRef name, StringRef /*arg*/, vec3& value)
+            {
+                cl::Parser<>()(name + "-r", cmd_line_inst().bump(), value.x);
+                cl::Parser<>()(name + "-g", cmd_line_inst().bump(), value.y);
+                cl::Parser<>()(name + "-b", cmd_line_inst().bump(), value.z);
+            },
+            "ambient",
+            cl::Desc("Ambient color"),
+            cl::ArgDisallowed,
+            cl::init(this->ambient)
+            ) );
+
+        add_cmdline_option( cl::makeOption<color_space&>({
+                { "rgb",                RGB,            "RGB color space for display" },
+                { "srgb",               SRGB,           "sRGB color space for display" },
+            },
+            "colorspace",
+            cl::Desc("Color space"),
+            cl::ArgRequired,
+            cl::init(this->col_space)
+            ) );
+
 #ifdef __CUDACC__
         add_cmdline_option( cl::makeOption<device_type&>({
                 { "cpu",                CPU,            "Rendering on the CPU" },
@@ -197,6 +225,7 @@ struct renderer : viewer_type
     algorithm                                   algo            = Simple;
     bvh_build_strategy                          builder         = Binned;
     device_type                                 dev_type        = CPU;
+    color_space                                 col_space       = SRGB;
     bool                                        show_hud        = true;
     bool                                        show_hud_ext    = true;
     bool                                        show_bvh        = false;
@@ -206,6 +235,7 @@ struct renderer : viewer_type
     std::string                                 initial_camera;
 
     model                                       mod;
+    vec3                                        ambient         = vec3(-1.0f);
 
     host_bvh_type                               host_bvh;
 #ifdef __CUDACC__
@@ -217,7 +247,7 @@ struct renderer : viewer_type
     thrust::device_vector<device_tex_ref_type>  device_textures;
 #endif
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__MINGW64__)
     tbb_sched<ray_type_cpu>                     host_sched;
 #else
     tiled_sched<ray_type_cpu>                   host_sched;
@@ -277,6 +307,8 @@ public:
         glRasterPos2i(x, y);
 
         std::string str = buffer_.str();
+
+        glColor3f(1.0f, 1.0f, 1.0f);
 
         for (size_t i = 0; i < str.length(); ++i)
         {
@@ -460,6 +492,10 @@ void renderer::on_display()
     auto diagonal   = bounds.max - bounds.min;
     auto bounces    = algo == Pathtracing ? 10U : 4U;
     auto epsilon    = max( 1E-3f, length(diagonal) * 1E-5f );
+    auto amb        = ambient.x >= 0.0f // if set via cmdline
+                            ? vec4(ambient, 1.0f)
+                            : algo == Pathtracing ? vec4(1.0) : vec4(0.0)
+                            ;
 
     if (dev_type == renderer::GPU)
     {
@@ -483,7 +519,7 @@ void renderer::on_display()
                 bounces,
                 epsilon,
                 vec4(background_color(), 1.0f),
-                algo == Pathtracing ? vec4(1.0) : vec4(0.0)
+                amb
                 );
 
         call_kernel( algo, device_sched, kparams, frame_num, ssaa_samples, cam, device_rt );
@@ -509,7 +545,7 @@ void renderer::on_display()
                 bounces,
                 epsilon,
                 vec4(background_color(), 1.0f),
-                algo == Pathtracing ? vec4(1.0) : vec4(0.0)
+                amb
                 );
 
         call_kernel( algo, host_sched, kparams, frame_num, ssaa_samples, cam, host_rt );
@@ -519,7 +555,14 @@ void renderer::on_display()
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glEnable(GL_FRAMEBUFFER_SRGB);
+    if (col_space == SRGB)
+    {
+        glEnable(GL_FRAMEBUFFER_SRGB);
+    }
+    else
+    {
+        glDisable(GL_FRAMEBUFFER_SRGB);
+    }
 
     if (dev_type == renderer::GPU && false /* no direct rendering */)
     {
@@ -541,8 +584,6 @@ void renderer::on_display()
 
     // OpenGL overlay rendering
 
-    glColor3f(1.0f, 1.0f, 1.0f);
-
     if (show_hud)
     {
         render_hud();
@@ -550,21 +591,7 @@ void renderer::on_display()
 
     if (show_bvh)
     {
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadMatrixf(cam.get_proj_matrix().data());
-
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadMatrixf(cam.get_view_matrix().data());
-
-        outlines.frame();
-
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
-
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
+        outlines.frame(cam.get_view_matrix(), cam.get_proj_matrix());
     }
 }
 
@@ -603,6 +630,17 @@ void renderer::on_key_press(key_event const& event)
             outlines.init(host_bvh);
         }
 
+        break;
+
+    case 'c':
+        if (col_space == renderer::RGB)
+        {
+            col_space = renderer::SRGB;
+        }
+        else
+        {
+            col_space = renderer::RGB;
+        }
         break;
 
      case 'h':
@@ -803,10 +841,15 @@ int main(int argc, char** argv)
     {
         std::cerr << "GPU memory allocation failed" << std::endl;
         rend.device_bvh = renderer::device_bvh_type();
-        rend.device_normals.resize(0);
-        rend.device_tex_coords.resize(0);
-        rend.device_materials.resize(0);
-        rend.device_textures.resize(0);
+        rend.device_normals.clear();
+        rend.device_normals.shrink_to_fit();
+        rend.device_tex_coords.clear();
+        rend.device_tex_coords.shrink_to_fit();
+        rend.device_materials.clear();
+        rend.device_materials.shrink_to_fit();
+        rend.device_texture_map.clear();
+        rend.device_textures.clear();
+        rend.device_textures.shrink_to_fit();
     }
 #endif
 

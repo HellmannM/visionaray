@@ -1,3 +1,6 @@
+# This file is distributed under the MIT license.
+# See the LICENSE file for details.
+
 macro(visionaray_link_libraries)
     set(__VSNRAY_LINK_LIBRARIES ${__VSNRAY_LINK_LIBRARIES} ${ARGN})
 endmacro()
@@ -22,10 +25,23 @@ endfunction()
 function(visionaray_add_executable name)
     add_executable(${name} ${ARGN})
     target_link_libraries(${name} ${__VSNRAY_LINK_LIBRARIES})
+
+    if(__VSNRAY_CXX_COMPILER_IS_HCC)
+        set_target_properties(${name} PROPERTIES
+            COMPILE_FLAGS  ${__VSNRAY_HCC_COMPILE_FLAGS}
+            LINK_FLAGS ${__VSNRAY_HCC_LINK_FLAGS}
+        )
+    endif()
 endfunction()
 
 function(visionaray_add_library name)
     add_library(${name} ${ARGN})
     target_link_libraries(${name} ${__VSNRAY_LINK_LIBRARIES})
-endfunction()
 
+    if(__VSNRAY_CXX_COMPILER_IS_HCC)
+        set_target_properties(${name} PROPERTIES
+            COMPILE_FLAGS  ${__VSNRAY_HCC_COMPILE_FLAGS}
+            LINK_FLAGS ${__VSNRAY_HCC_LINK_FLAGS}
+        )
+    endif()
+endfunction()

@@ -1,8 +1,6 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#include <GL/glew.h>
-
 #include <visionaray/gl/util.h>
 #include <visionaray/math/math.h>
 
@@ -20,18 +18,22 @@ std::string gl::last_error()
     GLenum err = glGetError();
     if (err != GL_NO_ERROR)
     {
+#if VSNRAY_HAVE_GLEW
         return std::string(reinterpret_cast<char const*>(glewGetErrorString(err)));
+#endif
     }
     return "";
 }
 
 void gl::alloc_texture(pixel_format_info info, GLsizei w, GLsizei h)
 {
+#if defined(GL_VERSION_4_2) && GL_VERSION_4_2 || defined(GL_ES_VERSION_3_0) && GL_ES_VERSION_3_0
     if (glTexStorage2D)
     {
         glTexStorage2D(GL_TEXTURE_2D, 1, info.internal_format, w, h);
     }
     else
+#endif
     {
         glTexImage2D(GL_TEXTURE_2D, 0, info.internal_format, w, h, 0, info.format, info.type, 0);
     }
@@ -81,6 +83,7 @@ void gl::update_texture(
 
 void gl::draw_full_screen_quad()
 {
+#if defined(GL_VERSION_2_0) && GL_VERSION_2_0
     glPushAttrib(GL_TEXTURE_BIT | GL_TRANSFORM_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -107,10 +110,12 @@ void gl::draw_full_screen_quad()
     glPopMatrix();
 
     glPopAttrib();
+#endif
 }
 
 void gl::blend_texture(GLuint texture, GLenum sfactor, GLenum dfactor)
 {
+#if defined(GL_VERSION_2_0) && GL_VERSION_2_0
     glPushAttrib(GL_ALL_ATTRIB_BITS);
 
     glActiveTexture(GL_TEXTURE0);
@@ -127,10 +132,14 @@ void gl::blend_texture(GLuint texture, GLenum sfactor, GLenum dfactor)
     draw_full_screen_quad();
 
     glPopAttrib();
+#else
+    VSNRAY_UNUSED(texture, sfactor, dfactor);
+#endif
 }
 
 void gl::blend_pixels(GLsizei w, GLsizei h, GLenum format, GLenum type, GLvoid const* pixels, GLenum sfactor, GLenum dfactor)
 {
+#if defined(GL_VERSION_1_1) && GL_VERSION_1_1
     glPushAttrib(GL_ALL_ATTRIB_BITS);
 
     recti vp = gl::viewport();
@@ -147,6 +156,9 @@ void gl::blend_pixels(GLsizei w, GLsizei h, GLenum format, GLenum type, GLvoid c
     glDrawPixels(w, h, format, type, pixels);
 
     glPopAttrib();
+#else
+    VSNRAY_UNUSED(w, h, format, type, pixels, sfactor, dfactor);
+#endif
 }
 
 recti gl::viewport()

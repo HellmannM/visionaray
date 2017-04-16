@@ -6,18 +6,10 @@
 #ifndef VSNRAY_GL_BVH_OUTLINE_RENDERER_H
 #define VSNRAY_GL_BVH_OUTLINE_RENDERER_H 1
 
+#include <memory>
 #include <vector>
 
-#include <GL/glew.h>
-
-#include "../detail/platform.h"
-
-#if defined(VSNRAY_OS_DARWIN)
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
-
+#include <visionaray/math/matrix.h>
 #include <visionaray/bvh.h>
 
 namespace visionaray
@@ -57,34 +49,18 @@ public:
 //      int            level ;
     };
 
+public:
 
-    //-------------------------------------------------------------------------
+    bvh_outline_renderer();
+   ~bvh_outline_renderer();
+
     // Render BVH outlines
-    //
+    void frame(mat4 const& view, mat4 const& proj) const;
 
-    void frame() const
-    {
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-        glVertexPointer(3, GL_FLOAT, 0, NULL);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glDrawArrays(GL_LINES, 0, (GLsizei)(num_vertices_));
-        glDisableClientState(GL_VERTEX_ARRAY);
-    }
-
-
-    //-------------------------------------------------------------------------
-    // init()
-    // Call with a valid OpenGL context!
-    //
-
+    // Call init() with a valid OpenGL context!
     template <typename BVH>
-    void init(BVH const& b, display_config config = display_config())
+    bool init(BVH const& b, display_config config = display_config())
     {
-        glDeleteBuffers(1, &vbo_);
-        glGenBuffers(1, &vbo_);
-
         std::vector<float> vertices;
         auto func =  [&](typename BVH::node_type const& n)
         {
@@ -141,30 +117,24 @@ public:
             traverse_leaves(b, func);
         }
 
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
         num_vertices_ = vertices.size() / 3;
+
+        return init_gl(vertices.data(), vertices.size() * sizeof(float));
     }
 
 
-    //-------------------------------------------------------------------------
-    // destroy()
-    // Call while OpenGL context is still valid!
-    //
-
-    void destroy()
-    {
-        glDeleteBuffers(1, &vbo_);
-    }
-
+    // Call destroy() while OpenGL context is still valid!
+    void destroy();
 
 private:
 
-    GLuint vbo_ = 0;
+    struct impl;
+    std::unique_ptr<impl> const impl_;
+
     size_t num_vertices_ = 0;
+
+    // Init shaders and vbo from pointer to vertices. Buffer size in bytes!
+    bool init_gl(float const* data, size_t size);
 
 };
 

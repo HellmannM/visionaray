@@ -139,7 +139,7 @@ VSNRAY_FORCE_INLINE int4 operator-(int4 const& u, int4 const& v)
 
 VSNRAY_FORCE_INLINE int4 operator*(int4 const& u, int4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_mullo_epi32(u, v);
 #else
     __m128i t0 = shuffle<1,0,3,0>(u);             // a1  ... a3  ...
@@ -152,6 +152,24 @@ VSNRAY_FORCE_INLINE int4 operator*(int4 const& u, int4 const& v)
 
     return t6;
 #endif
+}
+
+VSNRAY_FORCE_INLINE int4 operator/(int4 const& u, int4 const& v)
+{
+    return convert_to_int(convert_to_float(u) / convert_to_float(v));
+}
+
+VSNRAY_FORCE_INLINE int4 operator%(int4 const& u, int4 const& v)
+{
+    float4 uf = convert_to_float(u);
+    float4 vf = convert_to_float(v);
+
+    int4   t0 = u / v;
+    float4 t1 = convert_to_float(t0);
+    float4 t2 = t1 * vf;
+    float4 t3 = uf - t2;
+
+    return convert_to_int(t3);
 }
 
 
@@ -189,12 +207,12 @@ VSNRAY_FORCE_INLINE int4 operator>>(int4 const& a, int count)
 // Logical operations
 //
 
-VSNRAY_FORCE_INLINE mask4 operator&&(int4 const& u, int4 const& v)
+VSNRAY_FORCE_INLINE int4 operator&&(int4 const& u, int4 const& v)
 {
     return _mm_and_si128(u, v);
 }
 
-VSNRAY_FORCE_INLINE mask4 operator||(int4 const& u, int4 const& v)
+VSNRAY_FORCE_INLINE int4 operator||(int4 const& u, int4 const& v)
 {
     return _mm_or_si128(u, v);
 }
@@ -241,7 +259,7 @@ VSNRAY_FORCE_INLINE mask4 operator!=(int4 const& u, int4 const& v)
 
 VSNRAY_FORCE_INLINE int4 min(int4 const& u, int4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_min_epi32(u, v);
 #else
     return select(mask4(u < v), u, v);
@@ -250,7 +268,7 @@ VSNRAY_FORCE_INLINE int4 min(int4 const& u, int4 const& v)
 
 VSNRAY_FORCE_INLINE int4 max(int4 const& u, int4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_max_epi32(u, v);
 #else
     return select(mask4(u > v), u, v);

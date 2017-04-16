@@ -6,6 +6,14 @@
 #ifndef VSNRAY_GL_UTIL_H
 #define VSNRAY_GL_UTIL_H 1
 
+#include <visionaray/config.h>
+
+#if VSNRAY_HAVE_GLEW
+#include <GL/glew.h>
+#elif VSNRAY_HAVE_OPENGLES
+#include <GLES2/gl2.h>
+#endif
+
 #include <string>
 
 #include <visionaray/detail/platform.h>
@@ -16,11 +24,6 @@
 #undef min
 #undef max
 #endif
-#endif
-#if defined(VSNRAY_OS_DARWIN)
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
 #endif
 
 #include <visionaray/math/forward.h>

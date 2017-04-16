@@ -3,35 +3,13 @@
 
 #pragma once
 
-#ifndef VSNRAY_INPUT_MOUSE_H
-#define VSNRAY_INPUT_MOUSE_H 1
+#ifndef VSNRAY_COMMON_INPUT_MOUSE_H
+#define VSNRAY_COMMON_INPUT_MOUSE_H 1
 
-#include <visionaray/detail/platform.h>
 #include <visionaray/math/vector.h>
-
-#if defined(VSNRAY_HAVE_GLUT)
-
-#if defined(VSNRAY_OS_DARWIN)
-#include <GLUT/glut.h>
-#else
-#include <GL/glut.h>
-#endif
-
-#endif // VSNRAY_HAVE_GLUT
-
-
-#if defined(VSNRAY_HAVE_QT5CORE)
-#include <Qt>
-#endif // VSNRAY_HAVE_QT5CORE
-
-
-#if defined(VSNRAY_HAVE_SDL2)
-#include <SDL2/SDL.h>
-#endif // VSNRAY_HAVE_SDL2
 
 #include "exception.h"
 #include "keyboard.h"
-
 
 namespace visionaray
 {
@@ -100,89 +78,6 @@ inline buttons& operator^=(buttons& a, button b)
     return a;
 }
 
-
-#if defined(VSNRAY_HAVE_GLUT)
-
-//-------------------------------------------------------------------------------------------------
-// Map GLUT entities
-//
-
-static inline buttons map_glut_button(int but)
-{
-    // GLUT callbacks don't handle multiple buttons pressed at once
-    switch (but)
-    {
-
-    case GLUT_LEFT_BUTTON:
-        return mouse::Left;
-    case GLUT_MIDDLE_BUTTON:
-        return mouse::Middle;
-    case GLUT_RIGHT_BUTTON:
-        return mouse::Right;
-
-    }
-
-    return NoButton;
-}
-
-#endif // VSNRAY_HAVE_GLUT
-
-#if defined(VSNRAY_HAVE_QT5CORE)
-
-//-------------------------------------------------------------------------------------------------
-// Map Qt entities
-//
-
-static inline buttons map_qt_button(Qt::MouseButton but)
-{
-    // TODO: multiple buttons
-    switch (but)
-    {
-
-    case Qt::LeftButton:
-        return mouse::Left;
-    case Qt::MiddleButton:
-        return mouse::Middle;
-    case Qt::RightButton:
-        return mouse::Right;
-    default:
-        return NoButton;
-
-    }
-
-    return NoButton;
-}
-
-#endif // VSNRAY_HAVE_QT5CORE
-
-#if defined(VSNRAY_HAVE_SDL2)
-
-//-------------------------------------------------------------------------------------------------
-// Map SDL2 entities
-//
-
-static inline buttons map_sdl2_button(Uint8 but)
-{
-    // TODO: multiple buttons
-    switch (but)
-    {
-
-    case SDL_BUTTON_LEFT:
-        return mouse::Left;
-    case SDL_BUTTON_MIDDLE:
-        return mouse::Middle;
-    case SDL_BUTTON_RIGHT:
-        return mouse::Right;
-    default:
-        return NoButton;
-
-    }
-
-    return NoButton;
-}
-
-#endif // VSNRAY_HAVE_SDL2
-
 } // mouse
 
 
@@ -235,4 +130,4 @@ private:
 
 } // visionaray
 
-#endif // VSNRAY_INPUT_MOUSE_H
+#endif // VSNRAY_COMMON_INPUT_MOUSE_H

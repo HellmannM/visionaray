@@ -3,11 +3,12 @@
 
 #pragma once
 
-#ifndef VSNRAY_WHITTED_INL
-#define VSNRAY_WHITTED_INL 1
+#ifndef VSNRAY_DETAIL_WHITTED_INL
+#define VSNRAY_DETAIL_WHITTED_INL 1
 
 #include <array>
 #include <cstddef>
+#include <type_traits>
 
 #include <visionaray/get_surface.h>
 #include <visionaray/result_record.h>
@@ -332,4 +333,4 @@ struct kernel
 } // whitted
 } // visionaray
 
-#endif // VSNRAY_WHITTED_INL
+#endif // VSNRAY_DETAIL_WHITTED_INL

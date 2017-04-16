@@ -7,9 +7,12 @@
 #define VSNRAY_MATH_SIMD_H 1
 
 #include "avx.h"
+#include "avx512.h"
 #include "forward.h"
 #include "gather.h"
 #include "matrix.h"
+#include "neon.h"
+#include "random.h"
 #include "sse.h"
 #include "trans.h"
 #include "type_traits.h"

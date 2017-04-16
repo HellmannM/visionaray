@@ -1,10 +1,14 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
+#include <visionaray/config.h>
+
 #include <cassert>
 #include <stdexcept>
 
+#if VSNRAY_HAVE_GLEW
 #include <GL/glew.h>
+#endif
 
 #include <cuda_gl_interop.h>
 
@@ -215,8 +219,6 @@ void pixel_unpack_buffer_rt<ColorFormat, DepthFormat>::display_color_buffer() co
 {
     if (DepthFormat != PF_UNSPECIFIED)
     {
-        glPushAttrib( GL_TEXTURE_BIT | GL_ENABLE_BIT );
-
         // Update color texture
 
         pixel_format_info cinfo = map_pixel_format(ColorFormat);
@@ -252,8 +254,6 @@ void pixel_unpack_buffer_rt<ColorFormat, DepthFormat>::display_color_buffer() co
         // Combine textures using a shader
 
         impl_->compositor->composite_textures();
-
-        glPopAttrib();
     }
     else
     {

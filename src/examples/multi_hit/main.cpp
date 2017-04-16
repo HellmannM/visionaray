@@ -3,8 +3,10 @@
 
 #include <cassert>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <new>
+#include <ostream>
 
 #include <GL/glew.h>
 
@@ -408,8 +410,10 @@ int main(int argc, char** argv)
     {
         std::cerr << "GPU memory allocation failed" << std::endl;
         rend.device_bvh = renderer::device_bvh_type();
-        rend.device_normals.resize(0);
-        rend.device_materials.resize(0);
+        rend.device_normals.clear();
+        rend.device_normals.shrink_to_fit();
+        rend.device_materials.clear();
+        rend.device_materials.shrink_to_fit();
     }
 #endif
 

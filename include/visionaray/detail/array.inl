@@ -11,9 +11,9 @@
 #include "compiler.h"
 
 #ifdef VSNRAY_CXX_HAS_CONSTEXPR
-#define VSNRAY_CONSTEXPR_ constexpr
+#define VSNRAY_CONSTEXPR__ constexpr
 #else
-#define VSNRAY_CONSTEXPR_
+#define VSNRAY_CONSTEXPR__
 #endif
 
 namespace visionaray
@@ -29,7 +29,9 @@ inline T& array<T, N>::at(size_t pos)
 {
     if (pos >= N)
     {
+#if VSNRAY_CPU_MODE
         throw std::out_of_range("Index out of range");
+#endif
     }
 
     return data_[pos];
@@ -41,7 +43,9 @@ inline T const& array<T, N>::at(size_t pos) const
 {
     if (pos >= N)
     {
+#if VSNRAY_CPU_MODE
         throw std::out_of_range("Index out of range");
+#endif
     }
 
     return data_[pos];
@@ -190,21 +194,21 @@ inline typename array<T, N>::const_reverse_iterator array<T, N>::crend() const
 
 template <typename T, size_t N>
 VSNRAY_FUNC
-inline VSNRAY_CONSTEXPR_ bool array<T, N>::empty() const
+inline VSNRAY_CONSTEXPR__ bool array<T, N>::empty() const
 {
     return N == 0;
 }
 
 template <typename T, size_t N>
 VSNRAY_FUNC
-inline VSNRAY_CONSTEXPR_ size_t array<T, N>::size() const
+inline VSNRAY_CONSTEXPR__ size_t array<T, N>::size() const
 {
     return N;
 }
 
 template <typename T, size_t N>
 VSNRAY_FUNC
-inline VSNRAY_CONSTEXPR_ size_t array<T, N>::max_size() const
+inline VSNRAY_CONSTEXPR__ size_t array<T, N>::max_size() const
 {
     return N;
 }
@@ -275,26 +279,26 @@ namespace std
 // Element access
 //
 
-template <size_t I, typename  T, size_t N>
-VSNRAY_CONSTEXPR_ T& get(visionaray::array<T, N>& a)
+template <size_t I, typename T, size_t N>
+VSNRAY_CONSTEXPR__ T& get(visionaray::array<T, N>& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
-VSNRAY_CONSTEXPR_ T&& get(visionaray::array<T, N>&& a)
+template <size_t I, typename T, size_t N>
+VSNRAY_CONSTEXPR__ T&& get(visionaray::array<T, N>&& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
-VSNRAY_CONSTEXPR_ T const& get(visionaray::array<T, N> const& a)
+template <size_t I, typename T, size_t N>
+VSNRAY_CONSTEXPR__ T const& get(visionaray::array<T, N> const& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
-VSNRAY_CONSTEXPR_ T const&& get(visionaray::array<T, N> const&& a)
+template <size_t I, typename T, size_t N>
+VSNRAY_CONSTEXPR__ T const&& get(visionaray::array<T, N> const&& a)
 {
     return a[I];
 }
@@ -311,36 +315,36 @@ namespace thrust
 // Element access
 //
 
-template <size_t I, typename  T, size_t N>
+template <size_t I, typename T, size_t N>
 VSNRAY_FUNC
-VSNRAY_CONSTEXPR_ T& get(visionaray::array<T, N>& a)
+VSNRAY_CONSTEXPR__ T& get(visionaray::array<T, N>& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
+template <size_t I, typename T, size_t N>
 VSNRAY_FUNC
-VSNRAY_CONSTEXPR_ T&& get(visionaray::array<T, N>&& a)
+VSNRAY_CONSTEXPR__ T&& get(visionaray::array<T, N>&& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
+template <size_t I, typename T, size_t N>
 VSNRAY_FUNC
-VSNRAY_CONSTEXPR_ T const& get(visionaray::array<T, N> const& a)
+VSNRAY_CONSTEXPR__ T const& get(visionaray::array<T, N> const& a)
 {
     return a[I];
 }
 
-template <size_t I, typename  T, size_t N>
+template <size_t I, typename T, size_t N>
 VSNRAY_FUNC
-VSNRAY_CONSTEXPR_ T const&& get(visionaray::array<T, N> const&& a)
+VSNRAY_CONSTEXPR__ T const&& get(visionaray::array<T, N> const&& a)
 {
     return a[I];
 }
 
 } // thrust
 
-#undef VSNRAY_CONSTEXPR_
+#undef VSNRAY_CONSTEXPR__
 
 #endif

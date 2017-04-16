@@ -1,3 +1,6 @@
+# This file is distributed under the MIT license.
+# See the LICENSE file for details.
+
 find_package(Boost COMPONENTS chrono filesystem iostreams system thread REQUIRED)
 find_package(CUDA)
 find_package(Git)
@@ -86,6 +89,7 @@ set(UNITTESTS_SOURCES
     bvh/traverse.cpp
     detail/algorithm.cpp
     math/simd/gather.cpp
+    math/simd/select.cpp
     math/simd/simd.cpp
     math/matrix.cpp
     math/ray.cpp

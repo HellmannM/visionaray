@@ -7,6 +7,7 @@
 #define VSNRAY_DETAIL_SCHED_COMMON_H 1
 
 #include <chrono>
+#include <utility>
 
 #include <visionaray/array.h>
 #include <visionaray/packet_traits.h>
@@ -58,15 +59,18 @@ namespace detail
 // TODO: move to a better place
 //
 
-VSNRAY_FUNC
+#if defined(__CUDA_ARCH__)
+VSNRAY_GPU_FUNC
 inline unsigned tic()
 {
-#if defined(__CUDA_ARCH__)
     return clock64();
-#else
+}
+#endif
+
+inline unsigned tic()
+{
     auto t = std::chrono::high_resolution_clock::now();
     return t.time_since_epoch().count();
-#endif
 }
 
 
@@ -190,7 +194,7 @@ inline R make_primary_rays(
     VSNRAY_UNUSED(samp);
 
     using S = typename R::scalar_type;
-    return make_primary_ray_impl<R>(expand_pixel<S>().x(x), expand_pixel<S>().y(y), args...);
+    return make_primary_ray_impl<R>(expand_pixel<S>().x(x), expand_pixel<S>().y(y), std::forward<Args>(args)...);
 }
 
 template <typename R, typename Sampler, typename ...Args>
@@ -211,7 +215,7 @@ inline R make_primary_rays(
     return make_primary_ray_impl<R>(
             expand_pixel<S>().x(x) + jitter.x,
             expand_pixel<S>().y(y) + jitter.y,
-            args...
+            std::forward<Args>(args)...
             );
 }
 
@@ -234,8 +238,8 @@ inline array<R, 2> make_primary_rays(
     using S = typename R::scalar_type;
 
     return {{
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.25), expand_pixel<S>().y(y) - S(0.25), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.25), expand_pixel<S>().y(y) + S(0.25), args...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.25), expand_pixel<S>().y(y) - S(0.25), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.25), expand_pixel<S>().y(y) + S(0.25), std::forward<Args>(args)...),
         }};
 }
 
@@ -257,10 +261,10 @@ inline array<R, 4> make_primary_rays(
     using S = typename R::scalar_type;
 
     return {{
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) - S(0.375), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) - S(0.125), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) + S(0.375), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) + S(0.125), args...)
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) - S(0.375), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) - S(0.125), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) + S(0.375), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) + S(0.125), std::forward<Args>(args)...)
         }};
 }
 
@@ -282,14 +286,14 @@ inline array<R, 8> make_primary_rays(
     using S = typename R::scalar_type;
 
     return {{
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) - S(0.4375), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) - S(0.3125), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) - S(0.1875), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) - S(0.0625), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) + S(0.0625), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) + S(0.1825), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) + S(0.3125), args...),
-        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) + S(0.4375), args...)
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) - S(0.4375), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) - S(0.3125), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) - S(0.1875), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) - S(0.0625), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.125), expand_pixel<S>().y(y) + S(0.0625), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.375), expand_pixel<S>().y(y) + S(0.1825), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) - S(0.375), expand_pixel<S>().y(y) + S(0.3125), std::forward<Args>(args)...),
+        make_primary_ray_impl<R>(expand_pixel<S>().x(x) + S(0.125), expand_pixel<S>().y(y) + S(0.4375), std::forward<Args>(args)...)
         }};
 }
 
@@ -421,7 +425,7 @@ inline void sample_pixel_impl(
     VSNRAY_UNUSED(frame_num);
 
     auto result = invoke_kernel(kernel, r, samp, x, y);
-    result.depth = select( result.hit, depth_transform(result.isect_pos, args...), typename R::scalar_type(1.0) );
+    result.depth = select( result.hit, depth_transform(result.isect_pos, std::forward<Args>(args)...), typename R::scalar_type(1.0) );
     pixel_access::store(
             pixel_format_constant<CF>{},
             pixel_format_constant<PF_RGBA32F>{},
@@ -555,7 +559,7 @@ inline void sample_pixel_impl(
     auto result = invoke_kernel(kernel, r, samp, x, y);
     auto alpha  = S(1.0) / S(frame_num);
 
-    result.depth = select( result.hit, depth_transform(result.isect_pos, args...), S(1.0) );
+    result.depth = select( result.hit, depth_transform(result.isect_pos, std::forward<Args>(args)...), S(1.0) );
 
     pixel_access::blend(
             pixel_format_constant<CF>{},
@@ -659,12 +663,24 @@ inline void sample_pixel_impl(
     VSNRAY_UNUSED(frame_num);
     VSNRAY_UNUSED(args...);
 
-    using S = typename R::scalar_type;
+    using S     = typename R::scalar_type;
+    using Color = typename decltype(invoke_kernel(kernel, R{}, samp, x, y))::color_type;
 
     auto ray_ptr = rays.data();
 
     auto frame_begin = 0;
     auto frame_end   = Num;
+
+    pixel_access::store(
+            pixel_format_constant<CF>{},
+            pixel_format_constant<PF_RGBA32F>{},
+            x,
+            y,
+            width,
+            height,
+            Color(0.0),
+            rt_ref.color()
+            );
 
     for (size_t frame = frame_begin; frame < frame_end; ++frame)
     {
@@ -709,19 +725,32 @@ inline void sample_pixel_impl(
         Args&&...                       args
         )
 {
-    VSNRAY_UNUSED(args...);
-
-    using S = typename R::scalar_type;
+    using S      = typename R::scalar_type;
+    using Result = decltype(invoke_kernel(kernel, R{}, samp, x, y));
 
     auto ray_ptr = rays.data();
 
     auto frame_begin = frame_num;
     auto frame_end   = frame_num + Num;
 
+    pixel_access::store(
+            pixel_format_constant<CF>{},
+            pixel_format_constant<PF_RGBA32F>{},
+            pixel_format_constant<DF>{},
+            pixel_format_constant<PF_DEPTH32F>{},
+            x,
+            y,
+            width,
+            height,
+            Result{},
+            rt_ref.color(),
+            rt_ref.depth()
+            );
+
     for (size_t frame = frame_begin; frame < frame_end; ++frame)
     {
         auto result = invoke_kernel(kernel, *ray_ptr++, samp, x, y);
-        result.depth = select( result.hit, depth_transform(result.isect_pos, args...), S(1.0) );
+        result.depth = select( result.hit, depth_transform(result.isect_pos, std::forward<Args>(args)...), S(1.0) );
         auto alpha = S(1.0) / S(Num);
         pixel_access::blend(
                 pixel_format_constant<CF>{},

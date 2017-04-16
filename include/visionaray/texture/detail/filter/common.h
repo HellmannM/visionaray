@@ -118,9 +118,11 @@ inline RT point(
         RT              /* */
         )
 {
-    return simd::gather(tex, index);
+    return gather(tex, index);
 }
 
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
 
 // SIMD: special case, if multi-channel texture, assume SoA
 
@@ -132,6 +134,8 @@ inline simd::float4 point(
 {
     return tex[coord];
 }
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
 
 
 //-------------------------------------------------------------------------------------------------

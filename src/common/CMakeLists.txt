@@ -1,38 +1,60 @@
+# This file is distributed under the MIT license.
+# See the LICENSE file for details.
+
+
+#--------------------------------------------------------------------------------------------------
+# External libraries
+#
+
 find_package(Boost COMPONENTS chrono filesystem iostreams system thread REQUIRED)
-if (VSNRAY_ENABLE_CUDA)
-find_package(CUDA)
-endif()
 find_package(GLEW REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(JPEG)
 find_package(OpenGL REQUIRED)
 find_package(PNG)
-if (VSNRAY_ENABLE_QT5)
-find_package(Qt5Core)
-find_package(Qt5Gui)
-find_package(Qt5OpenGL)
-find_package(Qt5Widgets)
-endif()
 find_package(Threads REQUIRED)
 find_package(TIFF)
 
 visionaray_use_package(Boost)
-if (VSNRAY_ENABLE_CUDA)
-visionaray_use_package(CUDA)
-endif()
 visionaray_use_package(GLEW)
 visionaray_use_package(GLUT)
 visionaray_use_package(JPEG)
 visionaray_use_package(OpenGL)
 visionaray_use_package(PNG)
-if (VSNRAY_ENABLE_QT5)
-visionaray_use_package(Qt5Core)
-visionaray_use_package(Qt5Gui)
-visionaray_use_package(Qt5OpenGL)
-visionaray_use_package(Qt5Widgets)
-endif()
 visionaray_use_package(Threads)
 visionaray_use_package(TIFF)
+
+# CUDA
+
+if (VSNRAY_ENABLE_CUDA)
+    find_package(CUDA)
+    visionaray_use_package(CUDA)
+endif()
+
+# Qt5
+
+if (VSNRAY_ENABLE_QT5)
+    find_package(Qt5Core)
+    find_package(Qt5Gui)
+    find_package(Qt5OpenGL)
+    find_package(Qt5Widgets)
+    visionaray_use_package(Qt5Core)
+    visionaray_use_package(Qt5Gui)
+    visionaray_use_package(Qt5OpenGL)
+    visionaray_use_package(Qt5Widgets)
+endif()
+
+# SDL2
+
+if (VSNRAY_ENABLE_SDL2)
+    find_package(SDL2)
+    visionaray_use_package(SDL2)
+endif()
+
+
+#--------------------------------------------------------------------------------------------------
+#
+#
 
 visionaray_link_libraries(visionaray)
 
@@ -49,6 +71,26 @@ if (NOT EXISTS ${CMD_LINE_DIR}/.git)
     return()
 endif()
 
+
+#---------------------------------------------------------------------------------------------------
+# Create config file
+#
+
+
+foreach(p ${__VSNRAY_USED_PACKAGES})
+    set(VSNRAY_COMMON_HAVE_${p} 1)
+endforeach()
+
+set(CONFIG_DIR ${__VSNRAY_COMMON_CONFIG_DIR})
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CONFIG_DIR}/config.h)
+
+include_directories(${__VSNRAY_CONFIG_DIR})
+
+
+#---------------------------------------------------------------------------------------------------
+# Visionaray common library
+#
+
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${CMD_LINE_INCLUDE_DIR})
@@ -57,9 +99,18 @@ set(CMAKE_AUTOMOC ON)
 
 set(COMMON_HEADERS
 
+    ${CONFIG_DIR}/config.h
+
+    async/connection.h
+    async/connection_manager.h
+    async/message.h
+
     input/exception.h
+    input/glut.h
     input/keyboard.h
     input/mouse.h
+    input/qt.h
+    input/sdl2.h
 
     manip/arcball.h
     manip/arcball_manipulator.h
@@ -70,12 +121,16 @@ set(COMMON_HEADERS
     manip/translate_manipulator.h
     manip/zoom_manipulator.h
 
+    blocking_queue.h
     call_kernel.h
     cfile.h
+    hdr_image.h
     image.h
     image_base.h
     jpeg_image.h
     make_unique.h
+    model.h
+    obj_grammar.h
     obj_loader.h
     png_image.h
     pnm_image.h
@@ -84,9 +139,14 @@ set(COMMON_HEADERS
     timer.h
     viewer_base.h
     viewer_glut.h
+
 )
 
 set(COMMON_SOURCES
+
+    async/connection.cpp
+    async/connection_manager.cpp
+    async/message.cpp
 
     manip/arcball.cpp
     manip/arcball_manipulator.cpp
@@ -97,9 +157,11 @@ set(COMMON_SOURCES
     manip/translate_manipulator.cpp
     manip/zoom_manipulator.cpp
 
+    hdr_image.cpp
     image.cpp
     image_base.cpp
     jpeg_image.cpp
+    obj_grammar.cpp
     obj_loader.cpp
     png_image.cpp
     pnm_image.cpp
@@ -111,18 +173,13 @@ set(COMMON_SOURCES
 )
 
 if (VSNRAY_ENABLE_QT5)
+    set(COMMON_HEADERS ${COMMON_HEADERS} viewer_qt.h)
+    set(COMMON_SOURCES ${COMMON_SOURCES} viewer_qt.cpp)
+endif()
 
-set(COMMON_HEADERS
-    ${COMMON_HEADERS}
-    viewer_qt.h
-)
-
-set(COMMON_SOURCES
-    ${COMMON_SOURCES}
-    viewer_qt.cpp
-
-)
-
+if (VSNRAY_ENABLE_SDL2)
+    set(COMMON_HEADERS ${COMMON_HEADERS} viewer_sdl2.h)
+    set(COMMON_SOURCES ${COMMON_SOURCES} viewer_sdl2.cpp)
 endif()
 
 set(CMD_LINE_HEADERS
@@ -161,5 +218,5 @@ visionaray_add_library(visionaray_common
 #
 
 if (VSNRAY_ENABLE_QT5)
-qt5_use_modules(visionaray_common Core Gui OpenGL Widgets)
+    qt5_use_modules(visionaray_common Core Gui OpenGL Widgets)
 endif()

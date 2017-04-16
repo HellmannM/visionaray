@@ -1,13 +1,15 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#if defined(VSNRAY_HAVE_JPEG)
+#include <common/config.h>
 
 #include <cstddef>
 #include <csetjmp>
 #include <cstdio>
 
+#if VSNRAY_COMMON_HAVE_JPEG
 #include <jpeglib.h>
+#endif
 
 #include "cfile.h"
 #include "jpeg_image.h"
@@ -15,15 +17,12 @@
 namespace visionaray
 {
 
-namespace detail
-{
-
+#if VSNRAY_COMMON_HAVE_JPEG
 struct error_mngr
 {
     jpeg_error_mgr pub;
     jmp_buf jmpbuf;
 };
-
 
 static void error_exit_func(j_common_ptr info)
 {
@@ -31,7 +30,6 @@ static void error_exit_func(j_common_ptr info)
     // TODO: print debug info
     longjmp(err->jmpbuf, 1);
 }
-
 
 struct decompress_ptr
 {
@@ -45,11 +43,12 @@ struct decompress_ptr
         jpeg_destroy_decompress(info);
     }
 };
+#endif
 
-}
 
 bool jpeg_image::load(std::string const& filename)
 {
+#if VSNRAY_COMMON_HAVE_JPEG
     cfile file(filename.c_str(), "r");
 
     if (!file.good())
@@ -58,11 +57,11 @@ bool jpeg_image::load(std::string const& filename)
     }
 
     struct jpeg_decompress_struct info;
-    detail::decompress_ptr info_ptr;
-    detail::error_mngr err;
+    decompress_ptr info_ptr;
+    error_mngr err;
 
     info.err = jpeg_std_error(&err.pub);
-    err.pub.error_exit = detail::error_exit_func;
+    err.pub.error_exit = error_exit_func;
 
     if (setjmp(err.jmpbuf))
     {
@@ -92,8 +91,11 @@ bool jpeg_image::load(std::string const& filename)
     }
 
     return true;
+#else
+    VSNRAY_UNUSED(filename);
+
+    return false;
+#endif
 }
 
-}
-
-#endif // VSNRAY_HAVE_JPEG
+} // visionaray

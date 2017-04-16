@@ -81,16 +81,6 @@ VSNRAY_FORCE_INLINE float8 select(mask8 const& m, float8 const& a, float8 const&
     return _mm256_blendv_ps(b, a, m.f);
 }
 
-VSNRAY_FORCE_INLINE float8 select(mask8 const& m, float8 const& a, float b)
-{
-    return select(m, a, float8(b));
-}
-
-VSNRAY_FORCE_INLINE float8 select(mask8 const& m, float a, float8 const& b)
-{
-    return select(m, float8(a), b);
-}
-
 
 //-------------------------------------------------------------------------------------------------
 // Load / store
@@ -104,7 +94,7 @@ VSNRAY_FORCE_INLINE void store(float dst[8], float8 const& v)
 template <size_t I>
 VSNRAY_FORCE_INLINE float& get(float8& v)
 {
-    static_assert(I >= 0 && I < 8, "Index out of range for SIMD vector access");
+    static_assert(I < 8, "Index out of range for SIMD vector access");
 
     return reinterpret_cast<float*>(&v)[I];
 }
@@ -112,9 +102,24 @@ VSNRAY_FORCE_INLINE float& get(float8& v)
 template <size_t I>
 VSNRAY_FORCE_INLINE float const& get(float8 const& v)
 {
-    static_assert(I >= 0 && I < 8, "Index out of range for SIMD vector access");
+    static_assert(I < 8, "Index out of range for SIMD vector access");
 
     return reinterpret_cast<float const*>(&v)[I];
+}
+
+
+//-------------------------------------------------------------------------------------------------
+// Transposition
+//
+
+VSNRAY_FORCE_INLINE float8 interleave_lo(float8 const& u, float8 const& v)
+{
+    return _mm256_unpacklo_ps(u, v);
+}
+
+VSNRAY_FORCE_INLINE float8 interleave_hi(float8 const& u, float8 const& v)
+{
+    return _mm256_unpackhi_ps(u, v);
 }
 
 
@@ -177,12 +182,12 @@ VSNRAY_FORCE_INLINE float8 operator^(float8 const& u, float8 const& v)
 // Logical operations
 //
 
-VSNRAY_FORCE_INLINE mask8 operator&&(float8 const& u, float8 const& v)
+VSNRAY_FORCE_INLINE float8 operator&&(float8 const& u, float8 const& v)
 {
     return _mm256_and_ps(u, v);
 }
 
-VSNRAY_FORCE_INLINE mask8 operator||(float8 const& u, float8 const& v)
+VSNRAY_FORCE_INLINE float8 operator||(float8 const& u, float8 const& v)
 {
     return _mm256_or_ps(u, v);
 }
@@ -247,6 +252,11 @@ VSNRAY_FORCE_INLINE float8 abs(float8 const& u)
     return _mm256_and_ps(u, _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF)));
 }
 
+VSNRAY_FORCE_INLINE float8 round(float8 const& v)
+{
+    return _mm256_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+}
+
 VSNRAY_FORCE_INLINE float8 ceil(float8 const& v)
 {
     return _mm256_ceil_ps(v);
@@ -264,7 +274,7 @@ VSNRAY_FORCE_INLINE float8 sqrt(float8 const& v)
 
 VSNRAY_FORCE_INLINE mask8 isinf(float8 const& v)
 {
-    VSNRAY_ALIGN(32) float values[8] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+    VSNRAY_ALIGN(32) float values[8] = {};
     store(values, v);
 
     return mask8(

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#ifndef VNSRAY_COMMON_PNM_IMAGE_H
-#define VNSRAY_COMMON_PNM_IMAGE_H 1
+#ifndef VSNRAY_COMMON_PNM_IMAGE_H
+#define VSNRAY_COMMON_PNM_IMAGE_H 1
 
 #include <string>
 
@@ -17,10 +17,19 @@ class pnm_image : public image_base
 {
 public:
 
+    // Default constructor.
+    pnm_image() = default;
+
+    // Construct image from width, height, format, and data (data is copied).
+    pnm_image(size_t width, size_t height, pixel_format format, uint8_t const* data);
+
     bool load(std::string const& filename);
+
+    // Save pnm image. Options: { "binary", <bool> }
+    bool save(std::string const& filename, save_options const& options);
 
 };
 
 } // visionaray
 
-#endif // VNSRAY_COMMON_PNM_IMAGE_H
+#endif // VSNRAY_COMMON_PNM_IMAGE_H

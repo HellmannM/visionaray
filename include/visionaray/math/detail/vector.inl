@@ -1,9 +1,11 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#include <algorithm>
 #include <array>
+#include <cstring> // memcpy
 #include <type_traits>
+
+#include <visionaray/detail/algorithm.h>
 
 #include "../simd/type_traits.h"
 #include "math.h"
@@ -29,7 +31,7 @@ template <size_t Dim, typename T>
 MATH_FUNC
 inline vector<Dim, T>::vector(T const* data/*[Dim]*/)
 {
-    std::copy( data, data + Dim, data_ );
+    algo::copy(data, data + Dim, data_);
 }
 
 template <size_t Dim, typename T>
@@ -37,7 +39,7 @@ template <typename U>
 MATH_FUNC
 inline vector<Dim, T>::vector(vector<Dim, U> const& rhs)
 {
-    std::copy( rhs.data(), rhs.data() + Dim, data_ );
+    algo::copy(rhs.data(), rhs.data() + Dim, data_);
 }
 
 template <size_t Dim, typename T>
@@ -46,8 +48,8 @@ MATH_FUNC
 inline vector<Dim, T>::vector(vector<Dim1, U> const& first, vector<Dim2, U> const& second)
 {
     static_assert(Dim1 + Dim2 == Dim, "Incompatible vector dimensions");
-    std::copy( first.data(),  first.data()  + Dim1, data_ );
-    std::copy( second.data(), second.data() + Dim2, data_ + Dim1 );
+    algo::copy(first.data(), first.data() + Dim1, data_);
+    algo::copy(second.data(), second.data() + Dim2, data_ + Dim1);
 }
 
 template <size_t Dim, typename T>
@@ -996,6 +998,50 @@ inline auto pack(std::array<vector<Dim, T>, N> const& vecs)
 
     return result;
 }
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
+
+// pack four vectors
+
+template <size_t Dim, typename T>
+inline auto pack(
+        vector<Dim, T> const& v1,
+        vector<Dim, T> const& v2,
+        vector<Dim, T> const& v3,
+        vector<Dim, T> const& v4
+        )
+    -> vector<Dim, float_from_simd_width_t<4>>
+{
+    return pack( std::array<vector<Dim, T>, 4>{{
+            v1, v2, v3, v4
+            }} );
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
+
+// pack eight vectors
+
+template <size_t Dim, typename T>
+inline auto pack(
+        vector<Dim, T> const& v1,
+        vector<Dim, T> const& v2,
+        vector<Dim, T> const& v3,
+        vector<Dim, T> const& v4,
+        vector<Dim, T> const& v5,
+        vector<Dim, T> const& v6,
+        vector<Dim, T> const& v7,
+        vector<Dim, T> const& v8
+        )
+    -> vector<Dim, float_from_simd_width_t<8>>
+{
+    return pack( std::array<vector<Dim, T>, 8>{{
+            v1, v2, v3, v4, v5, v6, v7, v8
+            }} );
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
 
 // unpack -------------------------------------------------
 

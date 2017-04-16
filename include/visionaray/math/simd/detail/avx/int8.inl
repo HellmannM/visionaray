@@ -122,7 +122,7 @@ VSNRAY_FORCE_INLINE int const& get(int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator+(int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_add_epi32(_mm256_setzero_si256(), v);
 #else
     return int8(float8(0.0f) + float8(v));
@@ -131,7 +131,7 @@ VSNRAY_FORCE_INLINE int8 operator+(int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator-(int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_sub_epi32(_mm256_setzero_si256(), v);
 #else
     return int8(float8(0.0f) - float8(v));
@@ -140,7 +140,7 @@ VSNRAY_FORCE_INLINE int8 operator-(int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator+(int8 const& u, int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_add_epi32(u, v);
 #else
     return int8(float8(u) + float8(v));
@@ -149,7 +149,7 @@ VSNRAY_FORCE_INLINE int8 operator+(int8 const& u, int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator-(int8 const& u, int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_sub_epi32(u, v);
 #else
     return int8(float8(u) - float8(v));
@@ -158,7 +158,7 @@ VSNRAY_FORCE_INLINE int8 operator-(int8 const& u, int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator*(int8 const& u, int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_mullo_epi32(u, v);
 #else
     return int8(float8(u) * float8(v));
@@ -167,11 +167,24 @@ VSNRAY_FORCE_INLINE int8 operator*(int8 const& u, int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator/(int8 const& u, int8 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2 && VSNRAY_SIMD_HAS_SVML
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2 && VSNRAY_SIMD_HAS_SVML)
     return _mm256_div_epi32(u, v);
 #else
     return int8(float8(u) / float8(v));
 #endif
+}
+
+VSNRAY_FORCE_INLINE int8 operator%(int8 const& u, int8 const& v)
+{
+    float8 uf = convert_to_float(u);
+    float8 vf = convert_to_float(v);
+
+    int8   t0 = u / v;
+    float8 t1 = convert_to_float(t0);
+    float8 t2 = t1 * vf;
+    float8 t3 = uf - t2;
+
+    return convert_to_int(t3);
 }
 
 
@@ -181,22 +194,34 @@ VSNRAY_FORCE_INLINE int8 operator/(int8 const& u, int8 const& v)
 
 VSNRAY_FORCE_INLINE int8 operator&(int8 const& u, int8 const& v)
 {
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
+    return _mm256_and_si256(u, v);
+#else
     return reinterpret_as_int(reinterpret_as_float(u) & reinterpret_as_float(v));
+#endif
 }
 
 VSNRAY_FORCE_INLINE int8 operator|(int8 const& u, int8 const& v)
 {
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
+    return _mm256_or_si256(u, v);
+#else
     return reinterpret_as_int(reinterpret_as_float(u) | reinterpret_as_float(v));
+#endif
 }
 
 VSNRAY_FORCE_INLINE int8 operator^(int8 const& u, int8 const& v)
 {
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
+    return _mm256_xor_si256(u, v);
+#else
     return reinterpret_as_int(reinterpret_as_float(u) ^ reinterpret_as_float(v));
+#endif
 }
 
 VSNRAY_FORCE_INLINE int8 operator<<(int8 const& a, int count)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_slli_epi32(a, count);
 #else
     __m128i lo = _mm256_castsi256_si128(a);
@@ -209,7 +234,7 @@ VSNRAY_FORCE_INLINE int8 operator<<(int8 const& a, int count)
 
 VSNRAY_FORCE_INLINE int8 operator>>(int8 const& a, int count)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX2
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX2)
     return _mm256_srai_epi32(a, count);
 #else
     __m128i lo = _mm256_castsi256_si128(a);
@@ -252,7 +277,7 @@ VSNRAY_FORCE_INLINE mask8 operator>(int8 const& u, int8 const& v)
 
 VSNRAY_FORCE_INLINE mask8 operator==(int8 const& u, int8 const& v)
 {
-    return _mm256_cmp_ps(reinterpret_as_float(u), reinterpret_as_float(v), _CMP_EQ_OQ);
+    return _mm256_cmp_ps(float8(u), float8(v), _CMP_EQ_OQ);
 }
 
 VSNRAY_FORCE_INLINE mask8 operator<=(int8 const& u, int8 const& v)

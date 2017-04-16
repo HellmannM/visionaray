@@ -7,8 +7,7 @@
 
 #include <SDL2/SDL.h>
 
-#include "input/keyboard.h"
-#include "input/mouse.h"
+#include "input/sdl2.h"
 #include "viewer_sdl2.h"
 
 using namespace visionaray;
@@ -266,6 +265,11 @@ void viewer_sdl2::quit()
 void viewer_sdl2::resize(int width, int height)
 {
     viewer_base::resize(width, height);
+}
+
+void viewer_sdl2::swap_buffers()
+{
+    SDL_GL_SwapWindow(impl_->window);
 }
 
 

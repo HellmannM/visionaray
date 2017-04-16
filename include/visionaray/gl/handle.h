@@ -6,14 +6,16 @@
 #ifndef VSNRAY_GL_HANDLE_H
 #define VSNRAY_GL_HANDLE_H 1
 
+#include <visionaray/config.h>
+
+#if VSNRAY_HAVE_GLEW
+#include <GL/glew.h>
+#elif VSNRAY_HAVE_OPENGLES
+#include <GLES2/gl2.h>
+#endif
+
 #include <visionaray/detail/macros.h>
 #include <visionaray/detail/platform.h>
-
-#if defined(VSNRAY_OS_DARWIN)
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
 
 namespace visionaray
 {
@@ -108,6 +110,21 @@ private:
 };
 
 
+class vertex_array : public handle<vertex_array>
+{
+public:
+
+    explicit vertex_array(GLuint name = 0) : handle<vertex_array>(name) {}
+
+    void destroy();
+
+private:
+
+    VSNRAY_NOT_COPYABLE(vertex_array)
+
+};
+
+
 //-------------------------------------------------------------------------------------------------
 // factory functions
 //
@@ -116,6 +133,7 @@ GLuint create_buffer();
 GLuint create_framebuffer();
 GLuint create_renderbuffer();
 GLuint create_texture();
+GLuint create_vertex_array();
 
 } // gl
 } // visionaray

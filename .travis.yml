@@ -2,7 +2,7 @@
 # Configuration script for use with continuous integration service travis-ci.org
 #
 
-sudo: required
+sudo: false
 dist: trusty
 
 language: cpp
@@ -15,30 +15,18 @@ os:
 
 env:
     matrix:
-        - STD="CPP11" BUILD_TYPE="None"
         - STD="CPP11" BUILD_TYPE="Debug"
-        - STD="CPP11" BUILD_TYPE="RelWithDebInfo"
         - STD="CPP11" BUILD_TYPE="Release"
-        - STD="CPP11" BUILD_TYPE="MinSizeRel"
-        - STD="CPP14" BUILD_TYPE="None"
         - STD="CPP14" BUILD_TYPE="Debug"
-        - STD="CPP14" BUILD_TYPE="RelWithDebInfo"
         - STD="CPP14" BUILD_TYPE="Release"
-        - STD="CPP14" BUILD_TYPE="MinSizeRel"
 
 matrix:
     exclude:
         - env: STD="CPP14"
           compiler: clang
-        - env: STD="CPP14" BUILD_TYPE="None"
-          compiler: clang
         - env: STD="CPP14" BUILD_TYPE="Debug"
           compiler: clang
-        - env: STD="CPP14" BUILD_TYPE="RelWithDebInfo"
-          compiler: clang
         - env: STD="CPP14" BUILD_TYPE="Release"
-          compiler: clang
-        - env: STD="CPP14" BUILD_TYPE="MinSizeRel"
           compiler: clang
 
 addons:
@@ -50,19 +38,25 @@ addons:
             - libxmu-dev
             - freeglut3-dev
 
-
 before_install:
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install glew ;fi
+
 script:
 
     - export COMPILER_FLAGS="-msse4.1"
     - if [ "$STD" = "CPP11" ]; then export COMPILER_FLAGS="${COMPILER_FLAGS} -std=c++11"; fi
     - if [ "$STD" = "CPP14" ]; then export COMPILER_FLAGS="${COMPILER_FLAGS} -std=c++1y"; fi
-    - echo ${COMPILER_FLAGS}
 
     - mkdir -p build
     - cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "-DCMAKE_CXX_FLAGS=${COMPILER_FLAGS}" -DVSNRAY_ENABLE_EXAMPLES=ON
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+        "-DCMAKE_INSTALL_PREFIX=${HOME}/install"
+        "-DCMAKE_CXX_FLAGS=${COMPILER_FLAGS}"
+        -DVSNRAY_ENABLE_EXAMPLES=ON
+        -DVSNRAY_ENABLE_COMPILE_FAILURE_TESTS=ON
+        -DVSNRAY_ENABLE_UNITTESTS=ON
     - make VERBOSE=1
     - ctest -E 'surface_.*_illegal_integral_2|vector._pack_illegal_integral|vector._unpack_illegal_integral'
-    - sudo make install
+    - make install

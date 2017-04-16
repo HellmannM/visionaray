@@ -1,8 +1,6 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#include <GL/glew.h>
-
 #include <visionaray/gl/handle.h>
 
 namespace visionaray
@@ -28,6 +26,13 @@ void renderbuffer::destroy()
 void texture::destroy()
 {
     glDeleteTextures(1, &name_);
+}
+
+void vertex_array::destroy()
+{
+#if defined(GL_VERSION_3_0) && GL_VERSION_3_0 || defined(GL_ES_VERSION_3_0) && GL_ES_VERSION_3_0
+    glDeleteVertexArrays(1, &name_);
+#endif
 }
 
 
@@ -59,7 +64,14 @@ GLuint create_texture()
     return buf;
 }
 
+GLuint create_vertex_array()
+{
+    GLuint buf = 0;
+#if defined(GL_VERSION_3_0) && GL_VERSION_3_0 || defined(GL_ES_VERSION_3_0) && GL_ES_VERSION_3_0
+    glGenVertexArrays(1, &buf);
+#endif
+    return buf;
+}
+
 } // gl
 } // visionaray
-
-

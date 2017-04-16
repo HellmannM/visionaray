@@ -1,14 +1,11 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#if defined(VSNRAY_HAVE_PNG)
+#include <common/config.h>
 
-#ifndef NDEBUG
-#include <iostream>
-#include <ostream>
-#endif
-
+#if VSNRAY_COMMON_HAVE_PNG
 #include <png.h>
+#endif
 
 #include "cfile.h"
 #include "png_image.h"
@@ -16,9 +13,7 @@
 namespace visionaray
 {
 
-namespace detail
-{
-
+#if VSNRAY_COMMON_HAVE_PNG
 struct png_read_context
 {
     png_structp png;
@@ -65,12 +60,12 @@ static int png_num_components(int color_type)
 
     return -1;
 }
-
-} // detail
+#endif
 
 
 bool png_image::load(std::string const& filename)
 {
+#if VSNRAY_COMMON_HAVE_PNG
     cfile file(filename.c_str(), "r");
 
     if (!file.good())
@@ -79,13 +74,13 @@ bool png_image::load(std::string const& filename)
     }
 
 
-    detail::png_read_context context;
+    png_read_context context;
 
     context.png = png_create_read_struct(
             PNG_LIBPNG_VER_STRING,
             0 /*user-data*/,
-            detail::png_error_callback,
-            detail::png_warning_callback
+            png_error_callback,
+            png_warning_callback
             );
 
     if (context.png == 0)
@@ -132,7 +127,7 @@ bool png_image::load(std::string const& filename)
         return false;
     }
 
-    auto num_components = detail::png_num_components(color_type);
+    auto num_components = png_num_components(color_type);
 
     switch (num_components)
     {
@@ -165,8 +160,11 @@ bool png_image::load(std::string const& filename)
     height_ = static_cast<size_t>(h);
 
     return true;
+#else
+    VSNRAY_UNUSED(filename);
+
+    return false;
+#endif
 }
 
 } // visionaray
-
-#endif // VSNRAY_HAVE_PNG

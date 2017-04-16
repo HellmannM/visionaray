@@ -1,18 +1,36 @@
+#--------------------------------------------------------------------------------------------------
+# External libraries
+#
+
 find_package(Boost REQUIRED)
-if (VSNRAY_ENABLE_CUDA)
-find_package(CUDA)
-endif()
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
 visionaray_use_package(Boost)
-if (VSNRAY_ENABLE_CUDA)
-visionaray_use_package(CUDA)
-endif()
-visionaray_use_package(GLEW)
-visionaray_use_package(OpenGL)
 visionaray_use_package(Threads)
+
+# Graphics API
+
+if (${VSNRAY_GRAPHICS_API} STREQUAL "GL")
+    find_package(GLEW REQUIRED)
+    find_package(OpenGL REQUIRED)
+    visionaray_use_package(GLEW)
+    visionaray_use_package(OpenGL)
+elseif (${VSNRAY_GRAPHICS_API} STREQUAL "GLES")
+    find_package(OpenGLES REQUIRED)
+    visionaray_use_package(OpenGLES)
+endif()
+
+# CUDA
+
+if (VSNRAY_ENABLE_CUDA)
+    find_package(CUDA)
+    visionaray_use_package(CUDA)
+endif()
+
+
+#--------------------------------------------------------------------------------------------------
+#
+#
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/visionaray)
@@ -20,11 +38,34 @@ include_directories(${PROJECT_SOURCE_DIR}/include/visionaray)
 set(HEADER_DIR ${PROJECT_SOURCE_DIR}/include/visionaray)
 
 
+#---------------------------------------------------------------------------------------------------
+# Create config file
+#
+
+
+foreach(p ${__VSNRAY_USED_PACKAGES})
+    set(VSNRAY_HAVE_${p} 1)
+endforeach()
+
+set(CONFIG_DIR ${__VSNRAY_VISIONARAY_CONFIG_DIR})
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CONFIG_DIR}/config.h)
+
+include_directories(${__VSNRAY_CONFIG_DIR})
+
+
+#---------------------------------------------------------------------------------------------------
+# Visionaray library
+#
+
 set(VSNRAY_HEADERS
 
     #----------------------------------------------------------------------------------------------
     # Public headers
     #
+
+    # Config
+
+    ${CONFIG_DIR}/config.h
 
     # Cuda
 
@@ -103,6 +144,21 @@ set(VSNRAY_HEADERS
     ${HEADER_DIR}/gl/handle.h
     ${HEADER_DIR}/gl/util.h
 
+    # HCC
+
+    ${HEADER_DIR}/hcc/detail/device_vector.inl
+    ${HEADER_DIR}/hcc/detail/host_vector.inl
+    ${HEADER_DIR}/hcc/detail/reverse_iterator.inl
+    ${HEADER_DIR}/hcc/detail/linear_congruential_engine.inl
+    ${HEADER_DIR}/hcc/detail/uniform_real_distribution.inl
+    ${HEADER_DIR}/hcc/compat.h
+    ${HEADER_DIR}/hcc/device_malloc_allocator.h
+    ${HEADER_DIR}/hcc/device_vector.h
+    ${HEADER_DIR}/hcc/host_vector.h
+    ${HEADER_DIR}/hcc/random.h
+    ${HEADER_DIR}/hcc/reverse_iterator.h
+    ${HEADER_DIR}/hcc/utility.h
+
     # Math
 
     ${HEADER_DIR}/math/detail/aabb.inl
@@ -124,19 +180,23 @@ set(VSNRAY_HEADERS
     ${HEADER_DIR}/math/simd/detail/avx/int8.inl
     ${HEADER_DIR}/math/simd/detail/avx/float8.inl
     ${HEADER_DIR}/math/simd/detail/avx/mask8.inl
+    ${HEADER_DIR}/math/simd/detail/avx512/int16.inl
+    ${HEADER_DIR}/math/simd/detail/avx512/float16.inl
+    ${HEADER_DIR}/math/simd/detail/avx512/mask16.inl
     ${HEADER_DIR}/math/simd/detail/sse/int4.inl
     ${HEADER_DIR}/math/simd/detail/sse/float4.inl
     ${HEADER_DIR}/math/simd/detail/sse/mask4.inl
-    ${HEADER_DIR}/math/simd/detail/sse/matrix4.inl
     ${HEADER_DIR}/math/simd/detail/basic_float.inl
     ${HEADER_DIR}/math/simd/detail/basic_int.inl
     ${HEADER_DIR}/math/simd/detail/basic_mask.inl
     ${HEADER_DIR}/math/simd/detail/common.h
     ${HEADER_DIR}/math/simd/avx.h
+    ${HEADER_DIR}/math/simd/avx512.h
     ${HEADER_DIR}/math/simd/forward.h
     ${HEADER_DIR}/math/simd/gather.h
     ${HEADER_DIR}/math/simd/intrinsics.h
     ${HEADER_DIR}/math/simd/matrix.h
+    ${HEADER_DIR}/math/simd/random.h
     ${HEADER_DIR}/math/simd/simd.h
     ${HEADER_DIR}/math/simd/sse.h
     ${HEADER_DIR}/math/simd/trans.h
@@ -247,8 +307,12 @@ set(VSNRAY_SOURCES
 
     detail/spd/d65.cpp
 
+    gl/bvh_outline_renderer.cpp
+    gl/compositing.cpp
     gl/debug_callback.cpp
     gl/handle.cpp
+    gl/program.cpp
+    gl/shader.cpp
     gl/util.cpp
 
     exception.cpp
@@ -272,7 +336,7 @@ visionaray_add_library(visionaray
 # Install headers and library
 #
 
-install(DIRECTORY ${HEADER_DIR}
+install(DIRECTORY ${HEADER_DIR} ${CONFIG_DIR}
     DESTINATION include
     COMPONENT headers
     FILES_MATCHING

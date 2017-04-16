@@ -1,9 +1,16 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
+#include <common/config.h>
+
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <vector>
+
+#if VSNRAY_COMMON_HAVE_GLEW
+#include <GL/glew.h> // glViewport() (TODO!)
+#endif
 
 #include <Support/CmdLine.h>
 #include <Support/CmdLineUtil.h>
@@ -24,12 +31,13 @@ struct viewer_base::impl
     manipulators    manips;
     cmdline_options options;
     cl::CmdLine     cmd;
+    bool            allow_unknown_args = false;
 
-    bool            full_screen     = false;
-    int             width           = 512;
-    int             height          = 512;
-    std::string     window_title    = "";
-    vec3            bgcolor         = { 0.1f, 0.4f, 1.0f };
+    bool            full_screen        = false;
+    int             width              = 512;
+    int             height             = 512;
+    std::string     window_title       = "";
+    vec3            bgcolor            = { 0.1f, 0.4f, 1.0f };
 
     impl(int width, int height, std::string window_title);
 
@@ -92,7 +100,7 @@ void viewer_base::impl::init(int argc, char** argv)
     }
     catch (...)
     {
-        std::cout << cmd.help(argv[0]) << std::endl;
+        std::cout << cmd.help(argv[0]) << '\n';
         throw;
     }
 }
@@ -113,7 +121,7 @@ void viewer_base::impl::parse_cmd_line(int argc, char** argv)
     cl::expandWildcards(args);
     cl::expandResponseFiles(args, cl::TokenizeUnix());
 
-    cmd.parse(args);
+    cmd.parse(args, allow_unknown_args);
 }
 
 
@@ -170,6 +178,16 @@ vec3 viewer_base::background_color() const
     return impl_->bgcolor;
 }
 
+void viewer_base::set_allow_unknown_cmd_line_args(bool allow)
+{
+    impl_->allow_unknown_args = allow;
+}
+
+cl::CmdLine& viewer_base::cmd_line_inst()
+{
+    return impl_->cmd;
+}
+
 void viewer_base::event_loop()
 {
 }
@@ -178,6 +196,10 @@ void viewer_base::resize(int width, int height)
 {
     impl_->width = width;
     impl_->height = height;
+}
+
+void viewer_base::swap_buffers()
+{
 }
 
 void viewer_base::toggle_full_screen()

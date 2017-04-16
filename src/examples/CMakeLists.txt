@@ -1,3 +1,6 @@
+# This file is distributed under the MIT license.
+# See the LICENSE file for details.
+
 find_package(Boost COMPONENTS chrono filesystem iostreams system thread REQUIRED)
 find_package(CUDA)
 find_package(GLEW REQUIRED)
@@ -26,6 +29,7 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${__VSNRAY_CONFIG_DIR})
 include_directories(${CMD_LINE_INCLUDE_DIR})
 
 add_subdirectory(ao)
@@ -35,4 +39,5 @@ add_subdirectory(minimal)
 add_subdirectory(multi_hit)
 add_subdirectory(multi_volume)
 add_subdirectory(nanort)
+add_subdirectory(texture3d)
 add_subdirectory(volume)

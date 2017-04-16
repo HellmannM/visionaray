@@ -59,6 +59,50 @@ inline auto pack(std::array<basic_ray<T>, N> const& rays)
             );
 }
 
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
+
+// pack four rays
+
+template <typename T>
+inline auto pack(
+        basic_ray<T> const& r1,
+        basic_ray<T> const& r2,
+        basic_ray<T> const& r3,
+        basic_ray<T> const& r4
+        )
+    -> basic_ray<float_from_simd_width_t<4>>
+{
+    return pack( std::array<basic_ray<T>, 4>{{
+            r1, r2, r3, r4
+            }} );
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
+
+// pack eight rays
+
+template <typename T>
+inline auto pack(
+        basic_ray<T> const& r1,
+        basic_ray<T> const& r2,
+        basic_ray<T> const& r3,
+        basic_ray<T> const& r4,
+        basic_ray<T> const& r5,
+        basic_ray<T> const& r6,
+        basic_ray<T> const& r7,
+        basic_ray<T> const& r8
+        )
+    -> basic_ray<float_from_simd_width_t<8>>
+{
+    return pack( std::array<basic_ray<T>, 8>{{
+            r1, r2, r3, r4, r5, r6, r7, r8
+            }} );
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
+
 // unpack -------------------------------------------------
 
 template <

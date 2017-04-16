@@ -69,21 +69,11 @@ VSNRAY_FORCE_INLINE int4 convert_to_int(float4 const& a)
 
 VSNRAY_FORCE_INLINE float4 select(mask4 const& m, float4 const& a, float4 const& b)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_blendv_ps(b, a, m.f);
 #else
     return _mm_or_ps(_mm_and_ps(m.f, a), _mm_andnot_ps(m.f, b));
 #endif
-}
-
-VSNRAY_FORCE_INLINE float4 select(mask4 const& m, float4 const& a, float b)
-{
-    return select(m, a, float4(b));
-}
-
-VSNRAY_FORCE_INLINE float4 select(mask4 const& m, float a, float4 const& b)
-{
-    return select(m, float4(a), b);
 }
 
 
@@ -91,14 +81,14 @@ VSNRAY_FORCE_INLINE float4 select(mask4 const& m, float a, float4 const& b)
 // Load / store / get
 //
 
-VSNRAY_FORCE_INLINE float4 load(float const dst[4])
+VSNRAY_FORCE_INLINE float4 load(float const src[4])
 {
-    return _mm_load_ps(dst);
+    return _mm_load_ps(src);
 }
 
-VSNRAY_FORCE_INLINE float4 load_unaligned(float const dst[4])
+VSNRAY_FORCE_INLINE float4 load_unaligned(float const src[4])
 {
-    return _mm_loadu_ps(dst);
+    return _mm_loadu_ps(src);
 }
 
 VSNRAY_FORCE_INLINE void store(float dst[4], float4 const& v)
@@ -110,6 +100,27 @@ VSNRAY_FORCE_INLINE void store_unaligned(float dst[4], float4 const& v)
 {
     _mm_storeu_ps(dst, v);
 }
+
+template <size_t I>
+VSNRAY_FORCE_INLINE float& get(float4& v)
+{
+    static_assert(I < 4, "Index out of range for SIMD vector access");
+
+    return reinterpret_cast<float*>(&v)[I];
+}
+
+template <size_t I>
+VSNRAY_FORCE_INLINE float const& get(float4 const& v)
+{
+    static_assert(I < 4, "Index out of range for SIMD vector access");
+
+    return reinterpret_cast<float const*>(&v)[I];
+}
+
+
+//-------------------------------------------------------------------------------------------------
+// Transposition
+//
 
 template <int U0, int U1, int V2, int V3>
 VSNRAY_FORCE_INLINE float4 shuffle(float4 const& u, float4 const& v)
@@ -123,20 +134,24 @@ VSNRAY_FORCE_INLINE float4 shuffle(float4 const& v)
     return _mm_shuffle_ps(v, v, _MM_SHUFFLE(V3, V2, V1, V0));
 }
 
-template <size_t I>
-VSNRAY_FORCE_INLINE float& get(float4& v)
+VSNRAY_FORCE_INLINE float4 move_lo(float4 const& u, float4 const& v)
 {
-    static_assert(I >= 0 && I < 4, "Index out of range for SIMD vector access");
-
-    return reinterpret_cast<float*>(&v)[I];
+    return _mm_movelh_ps(u, v);
 }
 
-template <size_t I>
-VSNRAY_FORCE_INLINE float const& get(float4 const& v)
+VSNRAY_FORCE_INLINE float4 move_hi(float4 const& u, float4 const& v)
 {
-    static_assert(I >= 0 && I < 4, "Index out of range for SIMD vector access");
+    return _mm_movehl_ps(u, v);
+}
 
-    return reinterpret_cast<float const*>(&v)[I];
+VSNRAY_FORCE_INLINE float4 interleave_lo(float4 const& u, float4 const& v)
+{
+    return _mm_unpacklo_ps(u, v);
+}
+
+VSNRAY_FORCE_INLINE float4 interleave_hi(float4 const& u, float4 const& v)
+{
+    return _mm_unpackhi_ps(u, v);
 }
 
 
@@ -199,12 +214,12 @@ VSNRAY_FORCE_INLINE float4 operator^(float4 const& u, float4 const& v)
 // Logical operations
 //
 
-VSNRAY_FORCE_INLINE mask4 operator&&(float4 const& u, float4 const& v)
+VSNRAY_FORCE_INLINE float4 operator&&(float4 const& u, float4 const& v)
 {
     return _mm_and_ps(u, v);
 }
 
-VSNRAY_FORCE_INLINE mask4 operator||(float4 const& u, float4 const& v)
+VSNRAY_FORCE_INLINE float4 operator||(float4 const& u, float4 const& v)
 {
     return _mm_or_ps(u, v);
 }
@@ -251,7 +266,7 @@ VSNRAY_FORCE_INLINE mask4 operator!=(float4 const& u, float4 const& v)
 
 VSNRAY_FORCE_INLINE float4 dot(float4 const& u, float4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_dp_ps(u, v, 0xFF);
 #else
    __m128 t1 = _mm_mul_ps(u, v);
@@ -286,7 +301,7 @@ VSNRAY_FORCE_INLINE float4 abs(float4 const& u)
 
 VSNRAY_FORCE_INLINE float4 round(float4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
 #else
     // Mask out the signbits of v
@@ -302,7 +317,7 @@ VSNRAY_FORCE_INLINE float4 round(float4 const& v)
 
 VSNRAY_FORCE_INLINE float4 ceil(float4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_ceil_ps(v);
 #else
     // i = trunc(v)
@@ -318,7 +333,7 @@ VSNRAY_FORCE_INLINE float4 ceil(float4 const& v)
 
 VSNRAY_FORCE_INLINE float4 floor(float4 const& v)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_floor_ps(v);
 #else
     // i = trunc(v)
@@ -339,7 +354,7 @@ VSNRAY_FORCE_INLINE float4 sqrt(float4 const& v)
 
 VSNRAY_FORCE_INLINE mask4 isinf(float4 const& v)
 {
-    VSNRAY_ALIGN(16) float values[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    VSNRAY_ALIGN(16) float values[4] = {};
     store(values, v);
 
     return mask4(

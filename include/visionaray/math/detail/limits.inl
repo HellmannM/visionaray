@@ -173,6 +173,8 @@ MATH_FUNC inline unorm<Bits> numeric_limits<unorm<Bits>>::max()
 }
 
 
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
+
 //-------------------------------------------------------------------------------------------------
 // simd::float4
 //
@@ -217,8 +219,9 @@ MATH_CPU_FUNC inline simd::int4 numeric_limits<simd::int4>::max()
     return simd::int4(INT_MAX);
 }
 
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2) || VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
 
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
 
 //-------------------------------------------------------------------------------------------------
 // simd::float8
@@ -264,6 +267,54 @@ MATH_CPU_FUNC inline simd::int8 numeric_limits<simd::int8>::max()
     return simd::int8(INT_MAX);
 }
 
-#endif // VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX512F)
+
+//-------------------------------------------------------------------------------------------------
+// simd::float16
+//
+
+MATH_CPU_FUNC inline simd::float16 numeric_limits<simd::float16>::min()
+{
+    return simd::float16(FLT_MIN);
+}
+
+MATH_CPU_FUNC inline simd::float16 numeric_limits<simd::float16>::lowest()
+{
+    return simd::float16(-FLT_MAX);
+}
+
+MATH_CPU_FUNC inline simd::float16 numeric_limits<simd::float16>::max()
+{
+    return simd::float16(FLT_MAX);
+}
+
+MATH_CPU_FUNC inline simd::float16 numeric_limits<simd::float16>::epsilon()
+{
+    return simd::float16(FLT_EPSILON);
+}
+
+
+//-------------------------------------------------------------------------------------------------
+// simd::int16
+//
+
+MATH_CPU_FUNC inline simd::int16 numeric_limits<simd::int16>::min()
+{
+    return simd::int16(INT_MIN);
+}
+
+MATH_CPU_FUNC inline simd::int16 numeric_limits<simd::int16>::lowest()
+{
+    return simd::int16(INT_MIN);
+}
+
+MATH_CPU_FUNC inline simd::int16 numeric_limits<simd::int16>::max()
+{
+    return simd::int16(INT_MAX);
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX512F)
 
 } // MATH_NAMESPACE

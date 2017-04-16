@@ -3,8 +3,8 @@
 
 #pragma once
 
-#ifndef VSNRAY_SIMD_SSE_H
-#define VSNRAY_SIMD_SSE_H 1
+#ifndef VSNRAY_MATH_SIMD_SSE_H
+#define VSNRAY_MATH_SIMD_SSE_H 1
 
 #include <visionaray/detail/macros.h>
 
@@ -12,6 +12,7 @@
 #include "forward.h"
 #include "intrinsics.h"
 
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2)
 
 namespace MATH_NAMESPACE
 {
@@ -78,14 +79,11 @@ public:
     __m128i i;
 
     basic_mask() = default;
-    basic_mask(__m128 m);
-    basic_mask(__m128i m);
+    basic_mask(__m128 const& m);
+    basic_mask(__m128i const& m);
     basic_mask(bool x, bool y, bool z, bool w);
     basic_mask(bool const v[4]);
     basic_mask(bool b);
-    basic_mask(basic_float<__m128> const& m);
-
-    operator basic_float<__m128>() const;
 };
 
 } // simd
@@ -95,4 +93,6 @@ public:
 #include "detail/sse/float4.inl"
 #include "detail/sse/int4.inl"
 
-#endif // VSNRAY_SIMD_SSE_H
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2)
+
+#endif // VSNRAY_MATH_SIMD_SSE_H

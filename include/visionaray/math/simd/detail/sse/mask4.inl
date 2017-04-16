@@ -10,12 +10,12 @@ namespace simd
 // mask4 members
 //
 
-VSNRAY_FORCE_INLINE mask4::basic_mask(__m128 m)
+VSNRAY_FORCE_INLINE mask4::basic_mask(__m128 const& m)
     : f(m)
 {
 }
 
-VSNRAY_FORCE_INLINE mask4::basic_mask(__m128i m)
+VSNRAY_FORCE_INLINE mask4::basic_mask(__m128i const& m)
     : i(m)
 {
 }
@@ -45,16 +45,6 @@ VSNRAY_FORCE_INLINE mask4::basic_mask(bool b)
 {
 }
 
-VSNRAY_FORCE_INLINE mask4::basic_mask(basic_float<__m128> const& m)
-    : f(m)
-{
-}
-
-VSNRAY_FORCE_INLINE mask4::operator basic_float<__m128>() const
-{
-    return f;
-}
-
 
 //-------------------------------------------------------------------------------------------------
 // any / all intrinsics
@@ -77,7 +67,7 @@ VSNRAY_FORCE_INLINE bool all(mask4 const& m)
 
 VSNRAY_FORCE_INLINE mask4 select(mask4 const& m, mask4 const& a, mask4 const& b)
 {
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_SSE4_1
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE4_1)
     return _mm_blendv_ps(b.f, a.f, m.f);
 #else
     return _mm_or_ps(_mm_and_ps(m.f, a.f), _mm_andnot_ps(m.f, b.f));

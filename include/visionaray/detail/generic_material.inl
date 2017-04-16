@@ -267,7 +267,7 @@ inline std::array<visionaray::generic_material<Ts...>, 4> unpack(generic_materia
     return std::array<visionaray::generic_material<Ts...>, 4>{{ m4.get(0), m4.get(1), m4.get(2), m4.get(3) }};
 }
 
-#if VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
 
 template <typename ...Ts>
 inline generic_material<8, Ts...> pack(std::array<visionaray::generic_material<Ts...>, 8> const& mats)
@@ -284,7 +284,28 @@ inline std::array<visionaray::generic_material<Ts...>, 8> unpack(generic_materia
             }};
 }
 
-#endif // VSNRAY_SIMD_ISA >= VSNRAY_SIMD_ISA_AVX
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX)
+
+#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX512F)
+
+template <typename ...Ts>
+inline generic_material<16, Ts...> pack(std::array<visionaray::generic_material<Ts...>, 16> const& mats)
+{
+    return generic_material<16, Ts...>(mats);
+}
+
+template <typename ...Ts>
+inline std::array<visionaray::generic_material<Ts...>, 16> unpack(generic_material<16, Ts...> const& m16)
+{
+    return std::array<visionaray::generic_material<Ts...>, 8>{{
+            m16.get( 0), m16.get( 1), m16.get( 2), m16.get( 3),
+            m16.get( 4), m16.get( 5), m16.get( 6), m16.get( 7),
+            m16.get( 8), m16.get( 9), m16.get(10), m16.get(11),
+            m16.get(12), m16.get(13), m16.get(14), m16.get(15)
+            }};
+}
+
+#endif // VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_AVX512F)
 
 } // simd
 } // visionaray

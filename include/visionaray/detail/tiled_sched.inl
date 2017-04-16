@@ -5,7 +5,9 @@
 #include <cassert>
 #include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #include <visionaray/math/math.h>
@@ -20,9 +22,6 @@ namespace visionaray
 
 namespace detail
 {
-
-static const int tile_width  = 16;
-static const int tile_height = 16;
 
 struct sync_params
 {
@@ -81,7 +80,7 @@ struct tiled_sched<R>::impl
                 R{},
                 typename SP::pixel_sampler_type{},
                 samp,
-                args...
+                std::forward<Args>(args)...
                 );
 
         sample_pixel(
@@ -109,7 +108,7 @@ struct tiled_sched<R>::impl
                 R{},
                 typename SP::pixel_sampler_type{},
                 samp,
-                args...
+                std::forward<Args>(args)...
                 );
 
         sample_pixel(
@@ -130,6 +129,8 @@ struct tiled_sched<R>::impl
 
     int                         width;
     int                         height;
+    static const int            tile_width  = 16;
+    static const int            tile_height = 16;
     recti                       scissor_box;
 
     render_tile_func            render_tile;
@@ -198,8 +199,8 @@ void tiled_sched<R>::impl::render_loop()
                 break;
             }
 
-            auto tilew = detail::tile_width;
-            auto tileh = detail::tile_height;
+            auto tilew = tile_width;
+            auto tileh = tile_height;
             auto numtilesx = div_up( width, tilew );
 
             recti tile(
@@ -236,17 +237,15 @@ void tiled_sched<R>::impl::init_render_func(K kernel, SP sparams, unsigned frame
     height      = sparams.rt.height();
     scissor_box = sparams.scissor_box;
 
-    auto view_matrix     = matrix_type( sparams.view_matrix );
-    auto proj_matrix     = matrix_type( sparams.proj_matrix );
-    auto inv_view_matrix = matrix_type( inverse(sparams.view_matrix) );
-    auto inv_proj_matrix = matrix_type( inverse(sparams.proj_matrix) );
+    matrix_type view_matrix( sparams.view_matrix );
+    matrix_type proj_matrix( sparams.proj_matrix );
+    matrix_type inv_view_matrix( inverse(sparams.view_matrix) );
+    matrix_type inv_proj_matrix( inverse(sparams.proj_matrix) );
 
     recti clip_rect(scissor_box.x, scissor_box.y, scissor_box.w - 1, scissor_box.h - 1);
 
     render_tile = [=](recti const& tile, random_sampler<T>& samp)
     {
-        using namespace detail;
-
         unsigned numx = tile_width  / packet_size<T>::w;
         unsigned numy = tile_height / packet_size<T>::h;
         for (unsigned i = 0; i < numx * numy; ++i)
@@ -306,8 +305,6 @@ void tiled_sched<R>::impl::init_render_func(K kernel, SP sparams, unsigned frame
 
     render_tile = [=](recti const& tile, random_sampler<T>& samp)
     {
-        using namespace detail;
-
         unsigned numx = tile_width  / packet_size<T>::w;
         unsigned numy = tile_height / packet_size<T>::h;
         for (unsigned i = 0; i < numx * numy; ++i)
@@ -373,8 +370,8 @@ void tiled_sched<R>::frame(K kernel, SP sched_params, unsigned frame_num)
             typename detail::sched_params_has_view_matrix<SP>::type()
             );
 
-    auto numtilesx = div_up(impl_->width,  detail::tile_width);
-    auto numtilesy = div_up(impl_->height, detail::tile_height);
+    auto numtilesx = div_up(impl_->width,  impl_->tile_width);
+    auto numtilesy = div_up(impl_->height, impl_->tile_height);
 
     auto& sparams = impl_->sync_params;
 

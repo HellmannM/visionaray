@@ -44,8 +44,7 @@
 
 #endif
 
-#include "input/keyboard.h"
-#include "input/mouse.h"
+#include "input/glut.h"
 #include "viewer_glut.h"
 
 
@@ -279,6 +278,17 @@ void viewer_glut::event_loop()
     glutMainLoop();
 }
 
+void viewer_glut::resize(int width, int height)
+{
+    viewer_base::resize(width, height);
+    glutReshapeWindow(width, height);
+}
+
+void viewer_glut::swap_buffers()
+{
+    glutSwapBuffers();
+}
+
 void viewer_glut::toggle_full_screen()
 {
     // OK to use statics, this is GLUT, anyway...
@@ -315,12 +325,6 @@ void viewer_glut::quit()
     viewer_base::quit();
     exit(EXIT_SUCCESS); // TODO
 #endif
-}
-
-void viewer_glut::resize(int width, int height)
-{
-    viewer_base::resize(width, height);
-    glutReshapeWindow(width, height);
 }
 
 

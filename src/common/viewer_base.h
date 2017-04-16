@@ -15,6 +15,7 @@ namespace support
 {
 namespace cl
 {
+class CmdLine;
 class OptionBase;
 } // cl
 } // support
@@ -49,8 +50,15 @@ public:
     int height() const;
     vec3 background_color() const;
 
+    // Allow for unknown or unhandled command line arguments
+    void set_allow_unknown_cmd_line_args(bool allow);
+
+    // Returns a reference to the command line instance
+    support::cl::CmdLine& cmd_line_inst();
+
     virtual void event_loop();
     virtual void resize(int width, int height);
+    virtual void swap_buffers();
     virtual void toggle_full_screen();
     virtual void quit();
 

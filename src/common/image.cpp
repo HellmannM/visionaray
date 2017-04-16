@@ -1,11 +1,14 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
+#include <common/config.h>
+
 #include <algorithm>
 #include <utility>
 
 #include <boost/filesystem.hpp>
 
+#include "hdr_image.h"
 #include "image.h"
 #include "jpeg_image.h"
 #include "png_image.h"
@@ -17,11 +20,21 @@
 // Helpers
 //
 
-enum image_type { JPEG, PNG, PNM, TGA, TIFF, Unknown };
+enum image_type { HDR, JPEG, PNG, PNM, TGA, TIFF, Unknown };
 
 static image_type get_type(std::string const& filename)
 {
     boost::filesystem::path p(filename);
+
+
+    // HDR
+
+    static const std::string hdr_extensions[] = { ".hdr", ".HDR" };
+
+    if (std::find(hdr_extensions, hdr_extensions + 2, p.extension()) != hdr_extensions + 2)
+    {
+        return HDR;
+    }
 
 
     // JPEG
@@ -83,6 +96,11 @@ namespace visionaray
 // image members
 //
 
+image::image(size_t width, size_t height, pixel_format format, uint8_t const* data)
+    : image_base(width, height, format, data)
+{
+}
+
 bool image::load(std::string const& filename)
 {
     std::string fn(filename);
@@ -91,7 +109,7 @@ bool image::load(std::string const& filename)
 
     switch (it)
     {
-#if defined(VSNRAY_HAVE_JPEG)
+#if VSNRAY_COMMON_HAVE_JPEG
     case JPEG:
     {
         jpeg_image jpg;
@@ -105,9 +123,9 @@ bool image::load(std::string const& filename)
         }
         return false;
     }
-#endif // VSNRAY_HAVE_JPEG
+#endif // VSNRAY_COMMON_HAVE_JPEG
 
-#if defined(VSNRAY_HAVE_PNG)
+#if VSNRAY_COMMON_HAVE_PNG
     case PNG:
     {
         png_image png;
@@ -121,9 +139,9 @@ bool image::load(std::string const& filename)
         }
         return false;
     }
-#endif // VSNRAY_HAVE_PNG
+#endif // VSNRAY_COMMON_HAVE_PNG
 
-#if defined(VSNRAY_HAVE_TIFF)
+#if VSNRAY_COMMON_HAVE_TIFF
     case TIFF:
     {
         tiff_image tiff;
@@ -137,10 +155,24 @@ bool image::load(std::string const& filename)
         }
         return false;
     }
-#endif // VSNRAY_HAVE_TIFF
+#endif // VSNRAY_COMMON_HAVE_TIFF
 
 
     // native formats
+
+//    case HDR:
+//    {
+//        hdr_image hdr;
+//        if (hdr.load(fn))
+//        {
+//            width_  = hdr.width_;
+//            height_ = hdr.height_;
+//            format_ = hdr.format_;
+//            data_   = std::move(hdr.data_);
+//            return true;
+//        }
+//        return false;
+//    }
 
     case PNM:
     {
@@ -182,9 +214,9 @@ bool image::load(std::string const& filename)
     return false;
 }
 
-bool image::save(std::string const& filename)
+bool image::save(std::string const& filename, image_base::save_options const& options)
 {
-    return image_base::save(filename); // TODO: oups, this will throw
+    return image_base::save(filename, options); // TODO: oups, this will throw
 }
 
 } // visionaray
