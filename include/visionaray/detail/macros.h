@@ -67,9 +67,15 @@
 #if (defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 0) || defined(__KALMAR_ACCELERATOR__)
 #define VSNRAY_CPU_MODE 0
 #define VSNRAY_GPU_MODE 1
+#define VSNRAY_FPGA_MODE 0
+#elif defined(__SYNTHESIS__)
+#define VSNRAY_CPU_MODE 0
+#define VSNRAY_GPU_MODE 0
+#define VSNRAY_FPGA_MODE 1
 #else
 #define VSNRAY_CPU_MODE 1
 #define VSNRAY_GPU_MODE 0
+#define VSNRAY_FPGA_MODE 0
 #endif
 
 
