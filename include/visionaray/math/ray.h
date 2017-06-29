@@ -24,9 +24,13 @@ public:
 
     vec_type ori;
     vec_type dir;
+    // ARTY
+    vec_type inv_dir;
 
     MATH_FUNC basic_ray() = default;
-    MATH_FUNC basic_ray(vector<3, T> const& o, vector<3, T> const& d);
+//    MATH_FUNC basic_ray(vector<3, T> const& o, vector<3, T> const& d);
+    // ARTY
+    basic_ray(vector<3, T> const& o, vector<3, T> const& d, vector<3, T> const& i);
 
 };
 

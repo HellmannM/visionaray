@@ -10,14 +10,21 @@
 namespace MATH_NAMESPACE
 {
 
+//template <typename T>
+//MATH_FUNC
+//inline basic_ray<T>::basic_ray(vector<3, T> const& o, vector<3, T> const& d)
+//    : ori(o)
+//    , dir(d)
+//{
+//}
 template <typename T>
 MATH_FUNC
-inline basic_ray<T>::basic_ray(vector<3, T> const& o, vector<3, T> const& d)
+inline basic_ray<T>::basic_ray(vector<3, T> const& o, vector<3, T> const& d, vector<3, T> const& i)
     : ori(o)
     , dir(d)
+	, inv_dir(i)
 {
 }
-
 
 namespace simd
 {

@@ -77,7 +77,8 @@ inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
         basic_aabb<U> const& aabb
         )
 {
-    vector<3, T> inv_dir = T(1.0) / ray.dir;
+//    vector<3, T> inv_dir = T(1.0) / ray.dir;
+    vector<3, T> inv_dir = ray.inv_dir;
     return intersect(ray, aabb, inv_dir);
 }
 
