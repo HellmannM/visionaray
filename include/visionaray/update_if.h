@@ -32,11 +32,16 @@ VSNRAY_FUNC
 void update_if(HR& dst, HR const& src, Cond const& cond)
 {
     dst.hit        |= cond;
-    dst.t           = select( cond, src.t, dst.t );
-    dst.prim_id     = select( cond, src.prim_id, dst.prim_id );
-    dst.geom_id     = select( cond, src.geom_id, dst.geom_id );
-    dst.u           = select( cond, src.u, dst.u );
-    dst.v           = select( cond, src.v, dst.v );
+//    dst.t           = select( cond, src.t, dst.t );
+//    dst.prim_id     = select( cond, src.prim_id, dst.prim_id );
+//    dst.geom_id     = select( cond, src.geom_id, dst.geom_id );
+//    dst.u           = select( cond, src.u, dst.u );
+//    dst.v           = select( cond, src.v, dst.v );
+    dst.t           = cond ? src.t : dst.t ;
+    dst.prim_id     = cond ? src.prim_id : dst.prim_id ;
+    dst.geom_id     = cond ? src.geom_id : dst.geom_id ;
+    dst.u           = cond ? src.u : dst.u ;
+    dst.v           = cond ? src.v : dst.v ;
 }
 
 
