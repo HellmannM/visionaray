@@ -159,7 +159,6 @@ MATH_FUNC
 inline vector<3, T> operator-(vector<3, T> const& u, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fsub limit=1 operation
 	T tmp1 = u.x - v.x;
 	T tmp2 = u.y - v.y;
 	T tmp3 = u.z - v.z;
@@ -174,7 +173,6 @@ MATH_FUNC
 inline vector<3, T> operator*(vector<3, T> const& u, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
 	T tmp1 = u.x * v.x;
 	T tmp2 = u.y * v.y;
 	T tmp3 = u.z * v.z;
@@ -189,7 +187,7 @@ MATH_FUNC
 inline vector<3, T> operator/(vector<3, T> const& u, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fdiv limit=1 operation
+	
 	T tmp1 = u.x / v.x;
 	T tmp2 = u.y / v.y;
 	T tmp3 = u.z / v.z;
@@ -225,7 +223,6 @@ MATH_FUNC
 inline vector<3, T> operator/(vector<3, T> const& v, T const& s)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fdiv limit=1 operation
 	T tmp1 = v.x / s;
 	T tmp2 = v.y / s;
 	T tmp3 = v.z / s;
@@ -254,7 +251,6 @@ MATH_FUNC
 inline vector<3, T> operator*(T const& s, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
 	T tmp1 = s * v.x;
 	T tmp2 = s * v.y;
 	T tmp3 = s * v.z;
@@ -269,7 +265,6 @@ MATH_FUNC
 inline vector<3, T> operator/(T const& s, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fdiv limit=1 operation
 	T tmp1 = s / v.x;
 	T tmp2 = s / v.y;
 	T tmp3 = s / v.z;
@@ -342,22 +337,13 @@ MATH_FUNC
 inline vector<3, T> cross(vector<3, T> const& u, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
-#pragma HLS ALLOCATION instances=fsub limit=1 operation
-//#pragma HLS RESOURCE variable=tmp6 core=DMul_fulldsp
 	T tmp1 = u.y * v.z;
-//#pragma HLS RESOURCE variable=tmp1 core=DMul_fulldsp
 	T tmp2 = u.z * v.y;
-//#pragma HLS RESOURCE variable=tmp2 core=DMul_fulldsp
 	T tmp3 = u.z * v.x;
-//#pragma HLS RESOURCE variable=tmp3 core=DMul_fulldsp
 	T tmp4 = u.x * v.z;
-//#pragma HLS RESOURCE variable=tmp4 core=DMul_fulldsp
 	T tmp5 = u.x * v.y;
-//#pragma HLS RESOURCE variable=tmp5 core=DMul_fulldsp
-
-	T tmp6;//
-	tmp6 = u.y * v.x;
+	T tmp6 = u.y * v.x;
+	
 	T tmp7 = tmp1 - tmp2;
 	T tmp8 = tmp3 - tmp4;
 	T tmp9 = tmp5 - tmp6;
@@ -377,14 +363,9 @@ MATH_FUNC
 inline T dot(vector<3, T> const& u, vector<3, T> const& v)
 {
 #ifdef __SYNTHESIS__
-#pragma HLS ALLOCATION instances=fmul limit=1 operation
-#pragma HLS ALLOCATION instances=fadd limit=1 operation
 	T tmp1 = u.x * v.x;
-//#pragma HLS RESOURCE variable=tmp1 core=DMul_fulldsp
 	T tmp2 = u.y * v.y;
-//#pragma HLS RESOURCE variable=tmp2 core=DMul_fulldsp
 	T tmp3 = u.z * v.z;
-//#pragma HLS RESOURCE variable=tmp3 core=DMul_fulldsp
 	tmp1 = tmp1 + tmp2;
 	tmp1 = tmp1 + tmp3;
 	return tmp1;

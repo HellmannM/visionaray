@@ -58,7 +58,9 @@ inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
         vector<3, T>            inv_dir
         )
 {
-    hit_record<basic_ray<T>, basic_aabb<U>> result;
+#pragma HLS ALLOCATION instances=fmul limit=1 operation
+#pragma HLS ALLOCATION instances=fdiv limit=1 operation
+	hit_record<basic_ray<T>, basic_aabb<U>> result;
 
     vector<3, T> t1 = (vector<3, T>(aabb.min) - ray.ori) * inv_dir;
     vector<3, T> t2 = (vector<3, T>(aabb.max) - ray.ori) * inv_dir;
@@ -128,6 +130,9 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
         basic_triangle<3, U, unsigned> const&   tri
         )
 {
+#pragma HLS ALLOCATION instances=mul limit=6 operation
+#pragma HLS ALLOCATION instances=fmul limit=1 operation
+#pragma HLS ALLOCATION instances=fdiv limit=1 operation
 
     typedef vector<3, T> vec_type;
 
@@ -149,10 +154,11 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
         return result;
     }
 
-    T inv_div = T(1.0) / div;
+//    T inv_div = T(1.0) / div;
 
     vec_type d = ray.ori - v1;
-    T b1 = dot(d, s1) * inv_div;
+//    T b1 = dot(d, s1) * inv_div;
+    T b1 = dot(d, s1) / div;
 
     result.hit &= ( b1 >= T(0.0) && b1 <= T(1.0) );
 
@@ -162,7 +168,8 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
     }
 
     vec_type s2 = cross(d, e1);
-    T b2 = dot(ray.dir, s2) * inv_div;
+//    T b2 = dot(ray.dir, s2) * inv_div;
+    T b2 = dot(ray.dir, s2) / div;
 
     result.hit &= ( b2 >= T(0.0) && b1 + b2 <= T(1.0) );
 
@@ -173,7 +180,8 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
 
     result.prim_id = tri.prim_id;
     result.geom_id = tri.geom_id;
-    result.t = dot(e2, s2) * inv_div;
+//    result.t = dot(e2, s2) * inv_div;
+    result.t = dot(e2, s2) / div;
     result.u = b1;
     result.v = b2;
     return result;
