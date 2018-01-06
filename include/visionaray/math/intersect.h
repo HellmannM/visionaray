@@ -20,6 +20,9 @@
 #include "triangle.h"
 #include "vector.h"
 
+#define HLS_NO_XIL_FPO_LIB
+#include <ap_int.h>
+
 namespace MATH_NAMESPACE
 {
 
@@ -122,7 +125,6 @@ struct hit_record<basic_ray<T>, primitive<unsigned>>
 //-------------------------------------------------------------------------------------------------
 // ray / triangle
 //
-
 template <typename T, typename U>
 MATH_FUNC
 inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
@@ -134,6 +136,7 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
 #pragma HLS ALLOCATION instances=fmul limit=1 operation
 #pragma HLS ALLOCATION instances=fdiv limit=1 operation
 
+/*
     typedef vector<3, T> vec_type;
 
     hit_record<basic_ray<T>, primitive<unsigned>> result;
@@ -184,6 +187,66 @@ inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
     result.t = dot(e2, s2) / div;
     result.u = b1;
     result.v = b2;
+    return result;
+*/
+
+// hanika
+    hit_record<basic_ray<T>, primitive<unsigned>> result;
+    result.t = T(-1.0);
+    result.hit = false;
+
+    int i0 = (int)tri.i0;
+
+    typedef ap_fixed<32,16,AP_RND> F;
+//    typedef float F;
+
+// kann nicht mit [] auf vector<ap_fixed> zugreifen. warum? -> TODO
+    F ori0, ori1, ori2, dir0, dir1, dir2;
+    if(i0 == 0){
+		ori0 = (F)ray.ori.x;
+		ori1 = (F)ray.ori.y;
+		ori2 = (F)ray.ori.z;
+		dir0 = (F)ray.dir.x;
+		dir1 = (F)ray.dir.y;
+		dir2 = (F)ray.dir.z;
+	}else if(i0 == 1){
+		ori0 = (F)ray.ori.y;
+		ori1 = (F)ray.ori.z;
+		ori2 = (F)ray.ori.x;
+		dir0 = (F)ray.dir.y;
+		dir1 = (F)ray.dir.z;
+		dir2 = (F)ray.dir.x;
+	}else{
+		ori0 = (F)ray.ori.z;
+		ori1 = (F)ray.ori.x;
+		ori2 = (F)ray.ori.y;
+		dir0 = (F)ray.dir.z;
+		dir1 = (F)ray.dir.x;
+		dir2 = (F)ray.dir.y;
+	}
+
+    F t = ((F)tri.d - ori0 - ori1 * (F)tri.np - ori2 * (F)tri.nq)
+            / (dir0 + dir1 * (F)tri.np + dir2 * (F)tri.nq);
+
+//    F t = ((F)tri.d - (F)ray.ori[tri.i0] - (F)ray.ori[i1] * (F)tri.np - (F)ray.ori[i2] * (F)tri.nq)
+//            / ((F)ray.dir[tri.i0] + (F)ray.dir[i1] * (F)tri.np + (F)ray.dir[i2] * (F)tri.nq);
+
+    if (t < 0)
+        return result;
+
+    F kp = ori1 + t * dir1 - (F)tri.pp;
+    F kq = ori2 + t * dir2 - (F)tri.pq;
+    F u = (F)tri.e1p * (F)kq - (F)tri.e1q * (F)kp;
+    F v = (F)tri.e2q * (F)kp - (F)tri.e2p * (F)kq;
+//    F kp = (F)ray.ori[i1] + t * (F)ray.dir[i1] - (F)tri.pp;
+//    F kq = (F)ray.ori[i2] + t * (F)ray.dir[i2] - (F)tri.pq;
+//    F u = (F)tri.e[0] * (F)kq - (F)tri.e[2] * (F)kp;
+//    F v = (F)tri.e[3] * (F)kp - (F)tri.e[1] * (F)kq;
+
+    result.hit = (u >= 0.0 && v >= 0.0 && (u + v) <= 1.0);
+    if (result.hit)
+        result.t = (T)t;
+
     return result;
 
 }
