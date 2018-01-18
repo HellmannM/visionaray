@@ -11,8 +11,9 @@
 #include "primitive.h"
 #include "vector.h"
 
-#define HLS_NO_XIL_FPO_LIB
-#include <ap_int.h>
+//#define HLS_NO_XIL_FPO_LIB
+//#include <ap_int.h>
+#include <visionaray/math/fixed.h>
 
 namespace MATH_NAMESPACE
 {
@@ -46,8 +47,10 @@ class basic_triangle : public primitive<P>
 public:
 
     using F = T;
-    using D = ap_fixed<32, 1, AP_RND>;
-    using S = ap_fixed<32, 16, AP_RND>;
+//    using D = ap_fixed<32, 1, AP_RND>;
+//    using S = ap_fixed<32, 16, AP_RND>;
+    using D = fixed< 2, 30>;
+    using S = fixed<16, 16>;
     using scalar_type =  T;
     using vec_type    =  vector<Dim, T>;
 
@@ -65,7 +68,7 @@ public:
     vec_type e2;
 
     uint32_t i0;
-    vector<3, F> n;
+//    vector<3, F> n;
     F pp, pq;
     D np, nq;
     S e1p, e2p, e1q, e2q;
