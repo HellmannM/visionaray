@@ -30,6 +30,12 @@ struct widen<int32_t>
     using type = int64_t;
 };
 
+template <>
+struct widen<int64_t>
+{
+    using type = __int128;
+};
+
 } // detail
 
 
@@ -51,11 +57,19 @@ inline fixed<I, F>::fixed(short s)
 {
 }
 
+//template <unsigned I, unsigned F>
+//MATH_FUNC
+//inline fixed<I, F>::fixed(int i)
+//    : rep_(i << F)
+//{
+//}
+
 template <unsigned I, unsigned F>
 MATH_FUNC
 inline fixed<I, F>::fixed(int i)
-    : rep_(i << F)
 {
+	rep_ = i;
+	rep_ <<= F;
 }
 
 template <unsigned I, unsigned F>
@@ -126,6 +140,33 @@ MATH_FUNC
 inline fixed<I, F>::fixed(long double ld)
     : rep_(ld * (rep_type(1) << F))
 {
+}
+
+template <unsigned I, unsigned F>
+template <unsigned A, unsigned B>
+MATH_FUNC
+inline fixed<I, F>::fixed(const fixed<A, B>& fix)
+{
+	using dst = fixed<I, F>;
+	using src = fixed<A, B>;
+	
+	int diff = F - B;	// number of added decimal bits
+	
+	if (sizeof(typename src::rep_type) >= sizeof(typename dst::rep_type))
+//	if ((I+F) > (A+B)) // which is faster?
+	{	// shrink: shift first then store
+		if (diff < 0)
+			rep_ = static_cast<typename dst::rep_type>(fix.rep_ >> -diff);
+		else
+			rep_ = static_cast<typename dst::rep_type>(fix.rep_ << diff);
+	}
+	else
+	{	// widen: store first then shift
+		if (diff < 0)
+			rep_ = static_cast<typename dst::rep_type>(fix.rep_) >> -diff;
+		else
+			rep_ = static_cast<typename dst::rep_type>(fix.rep_) << diff;
+	}
 }
 
 template <unsigned I, unsigned F>
@@ -218,7 +259,36 @@ inline fixed<I, F>::operator long double() const
 {
     return static_cast<long double>(rep_) / (rep_type(1) << F);
 }
-
+/*
+template <unsigned I, unsigned F>
+template <unsigned A, unsigned B>
+MATH_FUNC
+inline fixed<I, F>::operator fixed<A, B>() const
+{
+	using src = fixed<I, F>;
+	using dst = fixed<A, B>;
+	
+	int diff = B - F;	// number of added decimal bits
+	fixed<A, B> res;
+	
+	if (sizeof(typename src::rep_type) >= sizeof(typename dst::rep_type))
+//	if ((I+F) > (A+B)) // which is faster?
+	{	// shrink: shift first then store
+		if (diff < 0)
+			res.rep_ = static_cast<typename dst::rep_type>(rep_ >> -diff);
+		else
+			res.rep_ = static_cast<typename dst::rep_type>(rep_ << diff);
+	}
+	else
+	{	// widen: store first then shift
+		if (diff < 0)
+			res.rep_ = static_cast<typename dst::rep_type>(rep_) >> -diff;
+		else
+			res.rep_ = static_cast<typename dst::rep_type>(rep_) << diff;
+	}
+	return res;
+}
+*/
 
 //-------------------------------------------------------------------------------------------------
 // Basic arithmetic

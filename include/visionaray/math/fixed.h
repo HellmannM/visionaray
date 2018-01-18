@@ -74,6 +74,9 @@ public:
     MATH_FUNC /* implicit */ fixed(double d);
     MATH_FUNC /* implicit */ fixed(long double ld);
 
+    template<unsigned A, unsigned B>
+    MATH_FUNC /* implicit */ fixed(const fixed<A, B>& fix);
+
     MATH_FUNC /* implicit */ operator char() const;
     MATH_FUNC /* implicit */ operator short() const;
     MATH_FUNC /* implicit */ operator int() const;
@@ -90,7 +93,10 @@ public:
     MATH_FUNC /* implicit */ operator double() const;
     MATH_FUNC /* implicit */ operator long double() const;
 
-private:
+//    template<unsigned A, unsigned B>
+//    MATH_FUNC /* implicit */ operator fixed<A, B>() const;
+
+//private: TODO: use reinterpret casts instead of accessing rep_ and make private again
 
     rep_type rep_;
 

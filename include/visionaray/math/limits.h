@@ -10,6 +10,8 @@
 
 #include "norm.h"
 
+#include "fixed.h"
+
 namespace MATH_NAMESPACE
 {
 
