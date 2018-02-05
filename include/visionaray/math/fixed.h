@@ -56,6 +56,9 @@ public:
 
 public:
 
+    MATH_FUNC rep_type get_rep_() const;
+    MATH_FUNC void set_rep_(rep_type v);
+
     MATH_FUNC fixed() = default;
 
     MATH_FUNC /* implicit */ fixed(char c);
@@ -96,7 +99,9 @@ public:
 //    template<unsigned A, unsigned B>
 //    MATH_FUNC /* implicit */ operator fixed<A, B>() const;
 
-//private: TODO: use reinterpret casts instead of accessing rep_ and make private again
+
+
+private:
 
     rep_type rep_;
 
