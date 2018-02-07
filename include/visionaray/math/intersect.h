@@ -54,43 +54,43 @@ struct hit_record<basic_ray<T>, basic_aabb<U>>
 
 };
 
-template <typename T, typename U>
-MATH_FUNC
-inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
-        basic_ray<T> const&     ray,
-        basic_aabb<U> const&    aabb,
-        vector<3, T>            inv_dir
-        )
-{
-#pragma HLS ALLOCATION instances=mul limit=2 operation
-	hit_record<basic_ray<T>, basic_aabb<U>> result;
-
-	typedef fixed<16,16> F; // TODO find optimal values
-	vector<3, F> ori(F(ray.ori.x), F(ray.ori.y), F(ray.ori.z));
-	vector<3, F> inv(F(inv_dir.x), F(inv_dir.y), F(inv_dir.z));
-    vector<3, F> t1 = (vector<3, F>(aabb.min) - ori) * inv;
-    vector<3, F> t2 = (vector<3, F>(aabb.max) - ori) * inv;
-//    vector<3, T> t1 = (vector<3, T>(aabb.min) - ray.ori) * inv_dir;
-//    vector<3, T> t2 = (vector<3, T>(aabb.max) - ray.ori) * inv_dir;
-
-    result.tnear = min_max( t1.x, t2.x, min_max(t1.y, t2.y, min(t1.z, t2.z)) );
-    result.tfar  = max_min( t1.x, t2.x, max_min(t1.y, t2.y, max(t1.z, t2.z)) );
-    result.hit   = result.tfar >= result.tnear;
-
-    return result;
-}
-
-template <typename T, typename U>
-MATH_FUNC
-inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
-        basic_ray<T> const& ray,
-        basic_aabb<U> const& aabb
-        )
-{
-//    vector<3, T> inv_dir = T(1.0) / ray.dir;
-    vector<3, T> inv_dir = ray.inv_dir;
-    return intersect(ray, aabb, inv_dir);
-}
+//template <typename T, typename U>
+//MATH_FUNC
+//inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
+//        basic_ray<T> const&     ray,
+//        basic_aabb<U> const&    aabb,
+//        vector<3, T>            inv_dir
+//        )
+//{
+//#pragma HLS ALLOCATION instances=mul limit=2 operation
+//	hit_record<basic_ray<T>, basic_aabb<U>> result;
+//
+//	typedef fixed<16,16> F; // TODO find optimal values
+//	vector<3, F> ori(F(ray.ori.x), F(ray.ori.y), F(ray.ori.z));
+//	vector<3, F> inv(F(inv_dir.x), F(inv_dir.y), F(inv_dir.z));
+//    vector<3, F> t1 = (vector<3, F>(aabb.min) - ori) * inv;
+//    vector<3, F> t2 = (vector<3, F>(aabb.max) - ori) * inv;
+////    vector<3, T> t1 = (vector<3, T>(aabb.min) - ray.ori) * inv_dir;
+////    vector<3, T> t2 = (vector<3, T>(aabb.max) - ray.ori) * inv_dir;
+//
+//    result.tnear = min_max( t1.x, t2.x, min_max(t1.y, t2.y, min(t1.z, t2.z)) );
+//    result.tfar  = max_min( t1.x, t2.x, max_min(t1.y, t2.y, max(t1.z, t2.z)) );
+//    result.hit   = result.tfar >= result.tnear;
+//
+//    return result;
+//}
+//
+//template <typename T, typename U>
+//MATH_FUNC
+//inline hit_record<basic_ray<T>, basic_aabb<U>> intersect(
+//        basic_ray<T> const& ray,
+//        basic_aabb<U> const& aabb
+//        )
+//{
+////    vector<3, T> inv_dir = T(1.0) / ray.dir;
+//    vector<3, T> inv_dir = ray.inv_dir;
+//    return intersect(ray, aabb, inv_dir);
+//}
 
 
 //-------------------------------------------------------------------------------------------------
@@ -127,136 +127,136 @@ struct hit_record<basic_ray<T>, primitive<unsigned>>
 };
 
 
-//-------------------------------------------------------------------------------------------------
-// ray / triangle
+////-------------------------------------------------------------------------------------------------
+//// ray / triangle
+////
+//template <typename T, typename U>
+//MATH_FUNC
+//inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
+//        basic_ray<T> const&                     ray,
+//        hanika_triangle<3, U, unsigned> const&   tri
+//        )
+//{
+//#pragma HLS ALLOCATION instances=mul limit=2 operation
 //
-template <typename T, typename U>
-MATH_FUNC
-inline hit_record<basic_ray<T>, primitive<unsigned>> intersect(
-        basic_ray<T> const&                     ray,
-        basic_triangle<3, U, unsigned> const&   tri
-        )
-{
-#pragma HLS ALLOCATION instances=mul limit=2 operation
-
-/*
-    typedef vector<3, T> vec_type;
-
-    hit_record<basic_ray<T>, primitive<unsigned>> result;
-    result.t = T(-1.0);
-
-    // case T != U
-    vec_type v1(tri.v1);
-    vec_type e1(tri.e1);
-    vec_type e2(tri.e2);
-
-    vec_type s1 = cross(ray.dir, e2);
-    T div = dot(s1, e1);
-
-    result.hit = ( div != T(0.0) );
-
-    if ( !any(result.hit) )
-    {
-        return result;
-    }
-
-//    T inv_div = T(1.0) / div;
-
-    vec_type d = ray.ori - v1;
-//    T b1 = dot(d, s1) * inv_div;
-    T b1 = dot(d, s1) / div;
-
-    result.hit &= ( b1 >= T(0.0) && b1 <= T(1.0) );
-
-    if ( !any(result.hit) )
-    {
-        return result;
-    }
-
-    vec_type s2 = cross(d, e1);
-//    T b2 = dot(ray.dir, s2) * inv_div;
-    T b2 = dot(ray.dir, s2) / div;
-
-    result.hit &= ( b2 >= T(0.0) && b1 + b2 <= T(1.0) );
-
-    if ( !any(result.hit) )
-    {
-        return result;
-    }
-
-    result.prim_id = tri.prim_id;
-    result.geom_id = tri.geom_id;
-//    result.t = dot(e2, s2) * inv_div;
-    result.t = dot(e2, s2) / div;
-    result.u = b1;
-    result.v = b2;
-    return result;
-*/
-
-// hanika
-    hit_record<basic_ray<T>, primitive<unsigned>> result;
-    result.t = T(-1.0);
-    result.hit = false;
-
-    int i0 = (int)tri.i0;
-
-    typedef fixed<16, 16> F; // TODO: find optimal values
-
-// kann nicht mit [] auf vector<ap_fixed> zugreifen. warum? -> TODO
-    F ori0, ori1, ori2, dir0, dir1, dir2;
-    if(i0 == 0){
-        ori0 = (F)ray.ori.x;
-        ori1 = (F)ray.ori.y;
-        ori2 = (F)ray.ori.z;
-        dir0 = (F)ray.dir.x;
-        dir1 = (F)ray.dir.y;
-        dir2 = (F)ray.dir.z;
-    }else if(i0 == 1){
-        ori0 = (F)ray.ori.y;
-        ori1 = (F)ray.ori.z;
-        ori2 = (F)ray.ori.x;
-        dir0 = (F)ray.dir.y;
-        dir1 = (F)ray.dir.z;
-        dir2 = (F)ray.dir.x;
-    }else{
-        ori0 = (F)ray.ori.z;
-        ori1 = (F)ray.ori.x;
-        ori2 = (F)ray.ori.y;
-        dir0 = (F)ray.dir.z;
-        dir1 = (F)ray.dir.x;
-        dir2 = (F)ray.dir.y;
-	}
-
-    F denominator(dir0 + dir1 * (F)tri.np + dir2 * (F)tri.nq);
-    if (denominator == F(0.0)){
-//    	std::cout << "div by 0 in prim intersect!" << std::endl; //TODO: why does this happen
-    	return result;
-    }
-
-    F t = ((F)tri.d - ori0 - ori1 * (F)tri.np - ori2 * (F)tri.nq)
-            / denominator;
-//    F t = ((F)tri.d - (F)ray.ori[tri.i0] - (F)ray.ori[i1] * (F)tri.np - (F)ray.ori[i2] * (F)tri.nq)
-//            / ((F)ray.dir[tri.i0] + (F)ray.dir[i1] * (F)tri.np + (F)ray.dir[i2] * (F)tri.nq);
-
-    if (t < (F)0)
-        return result;
-
-    F kp = ori1 + t * dir1 - (F)tri.pp;
-    F kq = ori2 + t * dir2 - (F)tri.pq;
-    F u = (F)tri.e1p * kq - (F)tri.e1q * kp;
-    F v = (F)tri.e2q * kp - (F)tri.e2p * kq;
-//    F kp = (F)ray.ori[i1] + t * (F)ray.dir[i1] - (F)tri.pp;
-//    F kq = (F)ray.ori[i2] + t * (F)ray.dir[i2] - (F)tri.pq;
-//    F u = (F)tri.e[0] * kq - (F)tri.e[2] * kp;
-//    F v = (F)tri.e[3] * kp - (F)tri.e[1] * kq;
-
-    result.hit = (u >= (F)-0.02 && v >= (F)-0.02 && (u + v) <= (F)1.04);
-    if (result.hit)
-        result.t = (T)t;
-
-    return result;
-
-}
+///*
+//    typedef vector<3, T> vec_type;
+//
+//    hit_record<basic_ray<T>, primitive<unsigned>> result;
+//    result.t = T(-1.0);
+//
+//    // case T != U
+//    vec_type v1(tri.v1);
+//    vec_type e1(tri.e1);
+//    vec_type e2(tri.e2);
+//
+//    vec_type s1 = cross(ray.dir, e2);
+//    T div = dot(s1, e1);
+//
+//    result.hit = ( div != T(0.0) );
+//
+//    if ( !any(result.hit) )
+//    {
+//        return result;
+//    }
+//
+////    T inv_div = T(1.0) / div;
+//
+//    vec_type d = ray.ori - v1;
+////    T b1 = dot(d, s1) * inv_div;
+//    T b1 = dot(d, s1) / div;
+//
+//    result.hit &= ( b1 >= T(0.0) && b1 <= T(1.0) );
+//
+//    if ( !any(result.hit) )
+//    {
+//        return result;
+//    }
+//
+//    vec_type s2 = cross(d, e1);
+////    T b2 = dot(ray.dir, s2) * inv_div;
+//    T b2 = dot(ray.dir, s2) / div;
+//
+//    result.hit &= ( b2 >= T(0.0) && b1 + b2 <= T(1.0) );
+//
+//    if ( !any(result.hit) )
+//    {
+//        return result;
+//    }
+//
+//    result.prim_id = tri.prim_id;
+//    result.geom_id = tri.geom_id;
+////    result.t = dot(e2, s2) * inv_div;
+//    result.t = dot(e2, s2) / div;
+//    result.u = b1;
+//    result.v = b2;
+//    return result;
+//*/
+//
+//// hanika
+//    hit_record<basic_ray<T>, primitive<unsigned>> result;
+//    result.t = T(-1.0);
+//    result.hit = false;
+//
+//    int i0 = (int)tri.i0;
+//
+//    typedef fixed<16, 16> F; // TODO: find optimal values
+//
+//// kann nicht mit [] auf vector<ap_fixed> zugreifen. warum? -> TODO
+//    F ori0, ori1, ori2, dir0, dir1, dir2;
+//    if(i0 == 0){
+//        ori0 = (F)ray.ori.x;
+//        ori1 = (F)ray.ori.y;
+//        ori2 = (F)ray.ori.z;
+//        dir0 = (F)ray.dir.x;
+//        dir1 = (F)ray.dir.y;
+//        dir2 = (F)ray.dir.z;
+//    }else if(i0 == 1){
+//        ori0 = (F)ray.ori.y;
+//        ori1 = (F)ray.ori.z;
+//        ori2 = (F)ray.ori.x;
+//        dir0 = (F)ray.dir.y;
+//        dir1 = (F)ray.dir.z;
+//        dir2 = (F)ray.dir.x;
+//    }else{
+//        ori0 = (F)ray.ori.z;
+//        ori1 = (F)ray.ori.x;
+//        ori2 = (F)ray.ori.y;
+//        dir0 = (F)ray.dir.z;
+//        dir1 = (F)ray.dir.x;
+//        dir2 = (F)ray.dir.y;
+//	}
+//
+//    F denominator(dir0 + dir1 * (F)tri.np + dir2 * (F)tri.nq);
+//    if (denominator == F(0.0)){
+////    	std::cout << "div by 0 in prim intersect!" << std::endl; //TODO: why does this happen
+//    	return result;
+//    }
+//
+//    F t = ((F)tri.d - ori0 - ori1 * (F)tri.np - ori2 * (F)tri.nq)
+//            / denominator;
+////    F t = ((F)tri.d - (F)ray.ori[tri.i0] - (F)ray.ori[i1] * (F)tri.np - (F)ray.ori[i2] * (F)tri.nq)
+////            / ((F)ray.dir[tri.i0] + (F)ray.dir[i1] * (F)tri.np + (F)ray.dir[i2] * (F)tri.nq);
+//
+//    if (t < (F)0)
+//        return result;
+//
+//    F kp = ori1 + t * dir1 - (F)tri.pp;
+//    F kq = ori2 + t * dir2 - (F)tri.pq;
+//    F u = (F)tri.e1p * kq - (F)tri.e1q * kp;
+//    F v = (F)tri.e2q * kp - (F)tri.e2p * kq;
+////    F kp = (F)ray.ori[i1] + t * (F)ray.dir[i1] - (F)tri.pp;
+////    F kq = (F)ray.ori[i2] + t * (F)ray.dir[i2] - (F)tri.pq;
+////    F u = (F)tri.e[0] * kq - (F)tri.e[2] * kp;
+////    F v = (F)tri.e[3] * kp - (F)tri.e[1] * kq;
+//
+//    result.hit = (u >= (F)-0.02 && v >= (F)-0.02 && (u + v) <= (F)1.04);
+//    if (result.hit)
+//        result.t = (T)t;
+//
+//    return result;
+//
+//}
 
 
 //-------------------------------------------------------------------------------------------------
