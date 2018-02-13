@@ -56,8 +56,8 @@ public:
 
 public:
 
-    MATH_FUNC rep_type get_rep_() const;
-    MATH_FUNC void set_rep_(rep_type v);
+    MATH_FUNC rep_type const& rep() const;
+    MATH_FUNC rep_type& rep();
 
     MATH_FUNC fixed() = default;
 

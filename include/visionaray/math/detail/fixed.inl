@@ -30,11 +30,11 @@ struct widen<int32_t>
     using type = int64_t;
 };
 
-template <>
-struct widen<int64_t>
-{
-    using type = __int128;
-};
+//template <>
+//struct widen<int64_t>
+//{
+//    using type = __int128;
+//};
 
 } // detail
 
@@ -45,18 +45,17 @@ struct widen<int64_t>
 
 template <unsigned I, unsigned F>
 MATH_FUNC
-inline typename fixed<I, F>::rep_type fixed<I, F>::get_rep_() const
+inline typename fixed<I, F>::rep_type const& fixed<I, F>::rep() const
 {
     return rep_;
 }
 
 template <unsigned I, unsigned F>
 MATH_FUNC
-inline void fixed<I,F>::set_rep_(typename fixed<I, F>::rep_type v)
+inline typename fixed<I, F>::rep_type& fixed<I, F>::rep()
 {
-    rep_ = v;
+    return rep_;
 }
-
 
 template <unsigned I, unsigned F>
 MATH_FUNC
@@ -171,16 +170,16 @@ inline fixed<I, F>::fixed(const fixed<A, B>& fix)
 //	if ((I+F) > (A+B)) // which is faster?
 	{	// shrink: shift first then store
 		if (diff < 0)
-			rep_ = static_cast<typename dst::rep_type>(fix.get_rep_() >> -diff);
+			rep_ = static_cast<typename dst::rep_type>(fix.rep() >> -diff);
 		else
-			rep_ = static_cast<typename dst::rep_type>(fix.get_rep_() << diff);
+			rep_ = static_cast<typename dst::rep_type>(fix.rep() << diff);
 	}
 	else
 	{	// widen: store first then shift
 		if (diff < 0)
-			rep_ = static_cast<typename dst::rep_type>(fix.get_rep_()) >> -diff;
+			rep_ = static_cast<typename dst::rep_type>(fix.rep()) >> -diff;
 		else
-			rep_ = static_cast<typename dst::rep_type>(fix.get_rep_()) << diff;
+			rep_ = static_cast<typename dst::rep_type>(fix.rep()) << diff;
 	}
 }
 
