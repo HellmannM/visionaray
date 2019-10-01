@@ -135,49 +135,49 @@ next:
 
 // Overload for instances ---------------------------------
 
-template <
-    detail::traversal_type Traversal,
-    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
-    typename R,
-    typename BVH,
-    typename = typename std::enable_if<is_any_bvh_inst<BVH>::value>::type,
-    typename Intersector,
-    typename T = typename R::scalar_type,
-    typename Cond = is_closer_t
-    >
-VSNRAY_FUNC
-inline auto intersect(
-        R const&     ray,
-        BVH const&   b,
-        Intersector& isect,
-        T            max_t = numeric_limits<T>::max(),
-        Cond         update_cond = Cond()
-        )
-    -> typename detail::traversal_result< hit_record_bvh_inst<
-            R,
-            decltype( isect(ray, std::declval<typename BVH::primitive_type>()) )
-            >, Traversal, MultiHitMax>::type
-{
-    using namespace detail;
-    using HR = hit_record_bvh_inst<R, decltype(isect(ray, std::declval<typename BVH::primitive_type>()))>;
-
-    using RT = typename detail::traversal_result<HR, Traversal, MultiHitMax>::type;
-
-    R transformed_ray = ray;
-    transformed_ray.ori = (matrix<4, 4, T>(b.transform_inv()) * vector<4, T>(ray.ori, T(1.0))).xyz();
-    transformed_ray.dir = (matrix<4, 4, T>(b.transform_inv()) * vector<4, T>(ray.dir, T(0.0))).xyz();
-    // NOTE: dir is in general *not* normalized!
-
-    auto hr = intersect<Traversal, MultiHitMax>(
-            transformed_ray,
-            b.get_ref(),
-            isect,
-            max_t,
-            update_cond
-            );
-
-    return RT(hr, hr.primitive_list_index, matrix<4, 4, T>(b.transform_inv()));
-}
+//template <
+//    detail::traversal_type Traversal,
+//    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
+//    typename R,
+//    typename BVH,
+//    typename = typename std::enable_if<is_any_bvh_inst<BVH>::value>::type,
+//    typename Intersector,
+//    typename T = typename R::scalar_type,
+//    typename Cond = is_closer_t
+//    >
+//VSNRAY_FUNC
+//inline auto intersect(
+//        R const&     ray,
+//        BVH const&   b,
+//        Intersector& isect,
+//        T            max_t = numeric_limits<T>::max(),
+//        Cond         update_cond = Cond()
+//        )
+//    -> typename detail::traversal_result< hit_record_bvh_inst<
+//            R,
+//            decltype( isect(ray, std::declval<typename BVH::primitive_type>()) )
+//            >, Traversal, MultiHitMax>::type
+//{
+//    using namespace detail;
+//    using HR = hit_record_bvh_inst<R, decltype(isect(ray, std::declval<typename BVH::primitive_type>()))>;
+//
+//    using RT = typename detail::traversal_result<HR, Traversal, MultiHitMax>::type;
+//
+//    R transformed_ray = ray;
+//    transformed_ray.ori = (matrix<4, 4, T>(b.transform_inv()) * vector<4, T>(ray.ori, T(1.0))).xyz();
+//    transformed_ray.dir = (matrix<4, 4, T>(b.transform_inv()) * vector<4, T>(ray.dir, T(0.0))).xyz();
+//    // NOTE: dir is in general *not* normalized!
+//
+//    auto hr = intersect<Traversal, MultiHitMax>(
+//            transformed_ray,
+//            b.get_ref(),
+//            isect,
+//            max_t,
+//            update_cond
+//            );
+//
+//    return RT(hr, hr.primitive_list_index, matrix<4, 4, T>(b.transform_inv()));
+//}
 
 
 //-------------------------------------------------------------------------------------------------
