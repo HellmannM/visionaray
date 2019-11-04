@@ -9,7 +9,8 @@ namespace MATH_NAMESPACE
 //
 
 template <>
-class VSNRAY_ALIGN(16) vector<3, float>
+//class VSNRAY_ALIGN(16) vector<3, float>
+class vector<3, float>
 {   
 public:
 
