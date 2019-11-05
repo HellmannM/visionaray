@@ -63,10 +63,15 @@ struct VSNRAY_ALIGN(32) bvh_node
     VSNRAY_FUNC bool is_inner() const { return num_prims == 0; }
     VSNRAY_FUNC bool is_leaf() const { return num_prims != 0; }
 
-    VSNRAY_FUNC aabb const& get_bounds() const
+//    VSNRAY_FUNC aabb const& get_bounds() const
+//    {
+//        static_assert( sizeof(bvh_node) == sizeof(aabb), "Size mismatch" );
+//        return *reinterpret_cast<aabb const*>(this);
+//    }
+    //TODO
+    VSNRAY_FUNC aabb const get_bounds() const
     {
-        static_assert( sizeof(bvh_node) == sizeof(aabb), "Size mismatch" );
-        return *reinterpret_cast<aabb const*>(this);
+        return aabb(vec3f(bbox_min), vec3f(bbox_max));
     }
 
     VSNRAY_FUNC unsigned get_child(unsigned i = 0) const
