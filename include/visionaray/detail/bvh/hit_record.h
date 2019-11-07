@@ -51,34 +51,34 @@ struct hit_record_bvh : Base
 // Stores the transform matrices necessary to transform points and vectors into object space
 //
 
-//template <typename R, typename Base>
-//struct hit_record_bvh_inst : hit_record_bvh<R, Base>
-//{
-//    using scalar_type = typename R::scalar_type;
-//    using int_type    = simd::int_type_t<scalar_type>;
-//    using base_type   = Base;
-//
-//    hit_record_bvh_inst() = default;
-//    VSNRAY_FUNC explicit hit_record_bvh_inst(
-//            hit_record_bvh<R, Base> const& base,
-//            int_type i,
-//            matrix<4, 4, scalar_type> const& trans_inv
-//            )
-//        : hit_record_bvh<R, Base>(base)
-//        , primitive_list_index_inst(i)
-//        , transform_inv(trans_inv)
-//    {
-//    }
-//
-//    // Index into the primitive list stored by the bvh instance
-//    // (this list is usually, but not always, accessed with
-//    // an indirect index by using BVH::primitive() - this index
-//    // is for *direct* access!)
-//    int_type primitive_list_index_inst = int_type(0);
-//
-//    // Inverse transformation matrix
-//    matrix<4, 4, scalar_type> transform_inv = matrix<4, 4, typename R::scalar_type>::identity();
-//};
+template <typename R, typename Base>
+struct hit_record_bvh_inst : hit_record_bvh<R, Base>
+{
+    using scalar_type = typename R::scalar_type;
+    using int_type    = simd::int_type_t<scalar_type>;
+    using base_type   = Base;
+
+    hit_record_bvh_inst() = default;
+    VSNRAY_FUNC explicit hit_record_bvh_inst(
+            hit_record_bvh<R, Base> const& base,
+            int_type i,
+            matrix<4, 4, scalar_type> const& trans_inv
+            )
+        : hit_record_bvh<R, Base>(base)
+        , primitive_list_index_inst(i)
+        , transform_inv(trans_inv)
+    {
+    }
+
+    // Index into the primitive list stored by the bvh instance
+    // (this list is usually, but not always, accessed with
+    // an indirect index by using BVH::primitive() - this index
+    // is for *direct* access!)
+    int_type primitive_list_index_inst = int_type(0);
+
+    // Inverse transformation matrix
+    matrix<4, 4, scalar_type> transform_inv = matrix<4, 4, typename R::scalar_type>::identity();
+};
 
 
 //-------------------------------------------------------------------------------------------------
@@ -98,19 +98,19 @@ void update_if(
     dst.primitive_list_index = select( cond, src.primitive_list_index, dst.primitive_list_index );
 }
 
-//// Overload for bvh inst record
-//template <typename R, typename Base, typename Cond>
-//VSNRAY_FUNC
-//void update_if(
-//    hit_record_bvh_inst<R, Base>&       dst,
-//    hit_record_bvh_inst<R, Base> const& src,
-//    Cond const&                         cond
-//    )
-//{
-//    update_if(static_cast<hit_record_bvh<R, Base>&>(dst), static_cast<hit_record_bvh<R, Base> const&>(src), cond);
-//    dst.primitive_list_index_inst = select( cond, src.primitive_list_index_inst, dst.primitive_list_index_inst );
-//    dst.transform_inv = select( cond, src.transform_inv, dst.transform_inv );
-//}
+// Overload for bvh inst record
+template <typename R, typename Base, typename Cond>
+VSNRAY_FUNC
+void update_if(
+    hit_record_bvh_inst<R, Base>&       dst,
+    hit_record_bvh_inst<R, Base> const& src,
+    Cond const&                         cond
+    )
+{
+    update_if(static_cast<hit_record_bvh<R, Base>&>(dst), static_cast<hit_record_bvh<R, Base> const&>(src), cond);
+    dst.primitive_list_index_inst = select( cond, src.primitive_list_index_inst, dst.primitive_list_index_inst );
+    dst.transform_inv = select( cond, src.transform_inv, dst.transform_inv );
+}
 
 
 namespace simd
@@ -152,53 +152,53 @@ inline hit_record_bvh<basic_ray<T>, decltype(simd::pack(array<Base, N>{{}}))> pa
 // simd::unpack()
 //
 
-//template <
-//    typename FloatT,
-//    typename Base,
-//    typename UnpackedBase = decltype(unpack(Base{})),
-//    typename = typename std::enable_if<is_simd_vector<FloatT>::value>::type
-//    >
-//VSNRAY_FUNC
-//inline auto unpack(
-//        hit_record_bvh_inst<basic_ray<FloatT>, Base> const& hr
-//        )
-//    -> array<
-//            hit_record_bvh_inst<ray, typename UnpackedBase::value_type>,
-//            num_elements<FloatT>::value
-//            >
-//{
-//    using int_array        = aligned_array_t<int_type_t<FloatT>>;
-//    using scalar_base_type = typename UnpackedBase::value_type;
-//
-//    auto base = simd::unpack(static_cast<Base const&>(hr));
-//
-//    int_array primitive_list_index;
-//    store(primitive_list_index, hr.primitive_list_index);
-//
-//    array<
-//        hit_record_bvh_inst<ray, scalar_base_type>,
-//        num_elements<FloatT>::value
-//        > result;
-//
-//    int_array primitive_list_index_inst = {};
-//    store(primitive_list_index_inst, hr.primitive_list_index_inst);
-//
-//    auto transform_inv = unpack(hr.transform_inv);
-//
-//    for (size_t i = 0; i < num_elements<FloatT>::value; ++i)
-//    {
-//        result[i] = hit_record_bvh_inst<ray, scalar_base_type>(
-//                hit_record_bvh<basic_ray<float>, scalar_base_type>(
-//                        scalar_base_type(base[i]),
-//                        primitive_list_index[i]
-//                        ),
-//                primitive_list_index_inst[i],
-//                transform_inv[i]
-//                );
-//    }
-//
-//    return result;
-//}
+template <
+    typename FloatT,
+    typename Base,
+    typename UnpackedBase = decltype(unpack(Base{})),
+    typename = typename std::enable_if<is_simd_vector<FloatT>::value>::type
+    >
+VSNRAY_FUNC
+inline auto unpack(
+        hit_record_bvh_inst<basic_ray<FloatT>, Base> const& hr
+        )
+    -> array<
+            hit_record_bvh_inst<ray, typename UnpackedBase::value_type>,
+            num_elements<FloatT>::value
+            >
+{
+    using int_array        = aligned_array_t<int_type_t<FloatT>>;
+    using scalar_base_type = typename UnpackedBase::value_type;
+
+    auto base = simd::unpack(static_cast<Base const&>(hr));
+
+    int_array primitive_list_index;
+    store(primitive_list_index, hr.primitive_list_index);
+
+    array<
+        hit_record_bvh_inst<ray, scalar_base_type>,
+        num_elements<FloatT>::value
+        > result;
+
+    int_array primitive_list_index_inst = {};
+    store(primitive_list_index_inst, hr.primitive_list_index_inst);
+
+    auto transform_inv = unpack(hr.transform_inv);
+
+    for (size_t i = 0; i < num_elements<FloatT>::value; ++i)
+    {
+        result[i] = hit_record_bvh_inst<ray, scalar_base_type>(
+                hit_record_bvh<basic_ray<float>, scalar_base_type>(
+                        scalar_base_type(base[i]),
+                        primitive_list_index[i]
+                        ),
+                primitive_list_index_inst[i],
+                transform_inv[i]
+                );
+    }
+
+    return result;
+}
 
 template <
     typename FloatT,
