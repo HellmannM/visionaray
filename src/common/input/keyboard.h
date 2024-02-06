@@ -32,7 +32,7 @@ enum key
 
     Plus = 0x2B, Comma = 0x2C, Minus = 0x2D, Period = 0x2E,
 
-    ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
+    ArrowLeft = 0x80, ArrowRight, ArrowUp, ArrowDown,
 
     PageUp, PageDown, Home, End, Insert,
 
