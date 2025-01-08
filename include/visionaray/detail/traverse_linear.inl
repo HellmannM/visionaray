@@ -1,7 +1,6 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#include <cstddef>
 #include <iterator>
 #include <type_traits>
 #include <utility>
@@ -12,8 +11,6 @@
 
 #include "exit_traversal.h"
 #include "macros.h"
-#include "multi_hit.h"
-#include "traversal_result.h"
 
 namespace visionaray
 {
@@ -26,8 +23,6 @@ namespace detail
 
 template <
     traversal_type Traversal,
-    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
-    typename Cond,
     typename R,
     typename P,
     typename Intersector
@@ -35,21 +30,20 @@ template <
 VSNRAY_FUNC
 inline auto traverse(
         std::false_type                 /* is no bvh */,
-        Cond                            update_cond,
         R const&                        r,
         P                               begin,
         P                               end,
         Intersector&                    isect
         )
 {
-    using RT = typename traversal_result<decltype( isect(r, *begin) ), Traversal, MultiHitMax>::type;
+    using RT = decltype(isect(r, *begin));
 
     RT result;
 
     for (P it = begin; it != end; ++it)
     {
         auto hr = isect(r, *it);
-        update_if(result, hr, update_cond(hr, result, r.tmin, r.tmax));
+        update_if(result, hr, is_closer(hr, result, r.tmin, r.tmax));
 
         exit_traversal<Traversal> early_exit;
         if (early_exit.check(result))
@@ -69,8 +63,6 @@ inline auto traverse(
 
 template <
     traversal_type Traversal,
-    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
-    typename Cond,
     typename R,
     typename P,
     typename Intersector
@@ -78,7 +70,6 @@ template <
 VSNRAY_FUNC
 inline auto traverse(
         std::true_type                  /* is_bvh */,
-        Cond                            update_cond,
         R const&                        r,
         P                               begin,
         P                               end,
@@ -87,10 +78,8 @@ inline auto traverse(
 {
     using RT = decltype( isect(
             std::integral_constant<int, Traversal>{},
-            std::integral_constant<size_t, MultiHitMax>{},
             r,
-            *begin,
-            update_cond
+            *begin
             ) );
 
     RT result;
@@ -99,13 +88,11 @@ inline auto traverse(
     {
         auto hr = isect(
                 std::integral_constant<int, Traversal>{},
-                std::integral_constant<size_t, MultiHitMax>{},
                 r,
-                *it,
-                update_cond
+                *it
                 );
 
-        update_if(result, hr, update_cond(hr, result, r.tmin, r.tmax));
+        update_if(result, hr, is_closer(hr, result, r.tmin, r.tmax));
 
         exit_traversal<Traversal> early_exit;
         if (early_exit.check(result))
@@ -119,9 +106,7 @@ inline auto traverse(
 
 template <
     traversal_type Traversal,
-    size_t MultiHitMax = 1,
     typename IsAnyBVH,
-    typename Cond,
     typename R,
     typename Primitives,
     typename Intersector
@@ -129,15 +114,13 @@ template <
 VSNRAY_FUNC
 inline auto traverse(
         IsAnyBVH        /* */,
-        Cond            update_cond,
         R const&        r,
         Primitives      begin,
         Primitives      end,
         Intersector&    isect
         )
-    -> decltype( traverse<Traversal, MultiHitMax>(
+    -> decltype( traverse<Traversal>(
             IsAnyBVH{},
-            update_cond,
             r,
             begin,
             end,
@@ -145,9 +128,8 @@ inline auto traverse(
             isect
             ) )
 {
-    return traverse<Traversal, MultiHitMax>(
+    return traverse<Traversal>(
             IsAnyBVH{},
-            update_cond,
             r,
             begin,
             end,
@@ -180,7 +162,6 @@ inline auto any_hit(
 {
     return detail::traverse<detail::AnyHit>(
             is_any_bvh<Primitive>{},
-            is_closer_t(),
             r,
             begin,
             end,
@@ -217,7 +198,6 @@ inline auto closest_hit(
 {
     return detail::traverse<detail::ClosestHit>(
             is_any_bvh<Primitive>{},
-            is_closer_t(),
             r,
             begin,
             end,
@@ -231,49 +211,6 @@ inline auto closest_hit(R const& r, Primitives begin, Primitives end)
 {
     default_intersector ignore;
     return closest_hit(r, begin, end, ignore);
-}
-
-
-//-------------------------------------------------------------------------------------------------
-// multi hit
-//
-
-template <
-    size_t   N = 16,
-    typename R,
-    typename Primitives,
-    typename Intersector,
-    typename Primitive = typename std::iterator_traits<Primitives>::value_type
-    >
-VSNRAY_FUNC
-inline auto multi_hit(
-        R const&        r,
-        Primitives      begin,
-        Primitives      end,
-        Intersector&    isect
-        )
-{
-    return detail::traverse<detail::MultiHit, N>(
-            is_any_bvh<Primitive>{},
-            is_closer_t(),
-            r,
-            begin,
-            end,
-            isect
-            );
-}
-
-template <
-    size_t N = 16,
-    typename R,
-    typename Primitives,
-    typename Primitive = typename std::iterator_traits<Primitives>::value_type
-    >
-VSNRAY_FUNC
-inline auto multi_hit(R const& r, Primitives begin, Primitives end)
-{
-    default_intersector ignore;
-    return multi_hit<N>(r, begin, end, ignore);
 }
 
 } // visionaray

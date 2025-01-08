@@ -11,8 +11,14 @@
 #include <cstring>
 #include <type_traits>
 
+#ifdef _WIN32
+#include <xmmintrin.h>
+#include <mmintrin.h>
+#include <immintrin.h>
+#else
 #if !defined(__aarch64__)
 #include <x86intrin.h>
+#endif
 #endif
 
 #include "../config.h"
@@ -80,7 +86,8 @@ using std::sqrt;
 using std::tan;
 #endif
 
-#ifdef __CUDACC__
+#ifndef _WIN32
+#if defined(__CUDACC__) || defined(__HIPCC__)
 using ::clock;
 #else
 inline uint64_t clock64()
@@ -95,6 +102,7 @@ inline uint64_t clock64()
     return ((uint64_t)hi << 32) | lo;
 #endif
 }
+#endif
 #endif
 
 #ifdef __CUDACC__

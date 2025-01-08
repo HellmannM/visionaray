@@ -13,10 +13,9 @@
 #include "../exit_traversal.h"
 #include "../stack.h"
 #include "../tags.h"
-#include "../traversal_result.h"
 #include "hit_record.h"
 
-#ifdef __CUDA_ARCH__
+#if defined( __CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 #define VSNRAY_FULL_STACK_TRAVERSAL_ 0
 #else
 #define VSNRAY_FULL_STACK_TRAVERSAL_ 1
@@ -31,37 +30,32 @@ namespace visionaray
 
 template <
     detail::traversal_type Traversal,
-    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
     typename R,
     typename BVH,
     typename = typename std::enable_if<is_any_bvh<BVH>::value>::type,
     typename = typename std::enable_if<!is_any_bvh_inst<BVH>::value>::type,
     typename Intersector,
-    typename T = typename R::scalar_type,
-    typename Cond = is_closer_t
+    typename T = typename R::scalar_type
     >
 VSNRAY_FUNC
 inline auto intersect(
         R const&     ray,
         BVH const&   b,
-        Intersector& isect,
-        Cond         update_cond = Cond()
+        Intersector& isect
         )
-    -> typename detail::traversal_result< hit_record_bvh<
+    -> hit_record_bvh<
             R,
             decltype( isect(ray, std::declval<typename BVH::primitive_type>()) )
-            >, Traversal, MultiHitMax>::type
+            >
 {
 #if VSNRAY_FULL_STACK_TRAVERSAL_
     using namespace detail;
     using HR = hit_record_bvh<R, decltype(isect(ray, std::declval<typename BVH::primitive_type>()))>;
 
-    using RT = typename detail::traversal_result<HR, Traversal, MultiHitMax>::type;
-
     using I = typename simd::int_type_t<T>;
     using M = typename simd::mask_type_t<T>;
 
-    RT result;
+    HR result;
 
     stack<32> st;
     st.push(0); // address of root node
@@ -80,7 +74,7 @@ next:
             //     traverse to the next node
 
             while (!is_leaf(node))
-            {   
+            {
                 auto children = &b.node(node.get_child(0));
 
                 auto hr1 = isect(ray, children[0].get_bounds(), inv_dir);
@@ -128,11 +122,11 @@ next:
 
                 I sign((int)node.ordered_traversal_sign);
                 I sign_rd = reinterpret_as_int(ray.dir[node.ordered_traversal_axis]) >> 31;
-                unsigned near = any(M(sign ^ sign_rd));
-                unsigned far = !near;
+                unsigned near_addr = any(M(sign ^ sign_rd));
+                unsigned far_addr = !near_addr;
 
-                st.push(node.get_child(far));
-                node = b.node(node.get_child(near));
+                st.push(node.get_child(far_addr));
+                node = b.node(node.get_child(near_addr));
             }
         }
 
@@ -145,7 +139,7 @@ next:
             auto prim = b.primitive(i);
 
             auto hr = HR(isect(ray, prim), i);
-            auto closer = update_cond(hr, result, ray.tmin, ray.tmax);
+            auto closer = is_closer(hr, result, ray.tmin, ray.tmax);
 
 #ifndef __CUDA_ARCH__
             if (!any(closer))
@@ -169,9 +163,7 @@ next:
     using namespace detail;
     using HR = hit_record_bvh<R, decltype(isect(ray, std::declval<typename BVH::primitive_type>()))>;
 
-    using RT = typename detail::traversal_result<HR, Traversal, MultiHitMax>::type;
-
-    RT result;
+    HR result;
 
     auto inv_dir = T(1.0) / ray.dir;
 
@@ -252,27 +244,45 @@ next:
     {
         while (!is_leaf(node))
         {
-            auto children = &b.node(node.get_child(0));
+            auto children = b.nodes() + node.get_child(0);
 
-            auto hr1 = isect(ray, children[0].get_bounds(), inv_dir);
-            auto hr2 = isect(ray, children[1].get_bounds(), inv_dir);
+            aabb box1 = children[0].get_bounds();
+            aabb box2 = children[1].get_bounds();
 
-            auto b1 = any(is_closer(hr1, result, ray.tmin, ray.tmax));
-            auto b2 = any(is_closer(hr2, result, ray.tmin, ray.tmax));
+            const vec3 t_lo1 = (box1.min - ray.ori) * inv_dir;
+            const vec3 t_hi1 = (box1.max - ray.ori) * inv_dir;
+
+            const vec3 t_lo2 = (box2.min - ray.ori) * inv_dir;
+            const vec3 t_hi2 = (box2.max - ray.ori) * inv_dir;
+
+            const vec3 t_nr1 = min(t_lo1, t_hi1);
+            const vec3 t_nr2 = min(t_lo2, t_hi2);
+
+            const vec3 t_fr1 = max(t_lo1, t_hi1);
+            const vec3 t_fr2 = max(t_lo2, t_hi2);
+
+            const float tnear1 = max(ray.tmin, max_element(t_nr1));
+            const float tnear2 = max(ray.tmin, max_element(t_nr2));
+
+            const float tfar1 = min(ray.tmax, min_element(t_fr1));
+            const float tfar2 = min(ray.tmax, min_element(t_fr2));
+
+            const bool b1 = tfar1 >= tnear1 && tnear1 < result.t;
+            const bool b2 = tfar2 >= tnear2 && tnear2 < result.t;
 
             if (b1 && b2)
             {
-                unsigned near_addr = all( hr1.tnear < hr2.tnear ) ? 0 : 1;
+                unsigned near_addr = tnear1 < tnear2 ? 0 : 1;
                 unsigned far_addr = !near_addr;
                 level >>= 1;
                 if ((trail & level) != 0)
                 {
-                    node = b.node(node.get_child(far_addr));
+                    node = children[far_addr];
                 }
                 else
                 {
                     push(node.get_child(far_addr));
-                    node = b.node(node.get_child(near_addr));
+                    node = children[near_addr];
                 }
             }
             else if (b1 || b2)
@@ -281,7 +291,7 @@ next:
                 if (level != pop_level)
                 {
                     trail |= level;
-                    node = b1 ? b.node(node.get_child(0)) : b.node(node.get_child(1));
+                    node = b1 ? children[0] : children[1];
                 }
                 else
                 {
@@ -311,7 +321,7 @@ next:
             auto prim = b.primitive(i);
 
             auto hr = HR(isect(ray, prim), i);
-            auto closer = update_cond(hr, result, ray.tmin, ray.tmax);
+            auto closer = is_closer(hr, result, ray.tmin, ray.tmax);
 
 #ifndef __CUDA_ARCH__
             if (!any(closer))
@@ -343,42 +353,36 @@ next:
 
 template <
     detail::traversal_type Traversal,
-    size_t MultiHitMax = 1,             // Max hits for multi-hit traversal
     typename R,
     typename BVH,
     typename = typename std::enable_if<is_any_bvh_inst<BVH>::value>::type,
     typename Intersector,
-    typename T = typename R::scalar_type,
-    typename Cond = is_closer_t
+    typename T = typename R::scalar_type
     >
 VSNRAY_FUNC
 inline auto intersect(
         R const&     ray,
         BVH const&   b,
-        Intersector& isect,
-        Cond         update_cond = Cond()
+        Intersector& isect
         )
-    -> typename detail::traversal_result< hit_record_bvh_inst<
+    -> hit_record_bvh_inst<
             R,
             decltype( isect(ray, std::declval<typename BVH::primitive_type>()) )
-            >, Traversal, MultiHitMax>::type
+            >
 {
     using namespace detail;
     using HR = hit_record_bvh_inst<R, decltype(isect(ray, std::declval<typename BVH::primitive_type>()))>;
 
-    using RT = typename detail::traversal_result<HR, Traversal, MultiHitMax>::type;
-
     R transformed_ray = ray;
     b.transform_ray(transformed_ray);
 
-    auto hr = intersect<Traversal, MultiHitMax>(
+    auto hr = intersect<Traversal>(
             transformed_ray,
             b.get_ref(),
-            isect,
-            update_cond
+            isect
             );
 
-    return RT(hr, hr.primitive_list_index, b.get_inst_id());
+    return HR(hr, hr.primitive_list_index, b.get_inst_id());
 }
 
 
@@ -392,19 +396,17 @@ template <
     typename R,
     typename BVH,
     typename = typename std::enable_if<is_any_bvh<BVH>::value>::type,
-    typename Intersector,
-    typename Cond = is_closer_t
+    typename Intersector
     >
 VSNRAY_FUNC
 inline auto intersect(
         R const&     ray,
         BVH const&   b,
-        Intersector& isect,
-        Cond         update_cond = Cond()
+        Intersector& isect
         )
-    -> decltype(intersect<detail::ClosestHit>(ray, b, isect, update_cond))
+    -> decltype(intersect<detail::ClosestHit>(ray, b, isect))
 {
-    return intersect<detail::ClosestHit>(ray, b, isect, update_cond);
+    return intersect<detail::ClosestHit>(ray, b, isect);
 }
 
 // overload w/ default intersector ------------------------
@@ -412,23 +414,18 @@ inline auto intersect(
 template <
     typename R,
     typename BVH,
-    typename = typename std::enable_if<is_any_bvh<BVH>::value>::type,
-    typename Cond = is_closer_t
+    typename = typename std::enable_if<is_any_bvh<BVH>::value>::type
     >
 VSNRAY_FUNC
-inline auto intersect(
-        R const&   ray,
-        BVH const& b,
-        Cond       update_cond = Cond()
-        )
+inline auto intersect(R const& ray, BVH const& b)
     -> decltype(intersect<detail::ClosestHit>(
             ray,
             b,
-            std::declval<default_intersector&>(), update_cond)
+            std::declval<default_intersector&>())
             )
 {
     default_intersector isect;
-    return intersect<detail::ClosestHit>(ray, b, isect, update_cond);
+    return intersect<detail::ClosestHit>(ray, b, isect);
 }
 
 

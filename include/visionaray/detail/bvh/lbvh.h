@@ -10,8 +10,9 @@
 #include <array>
 
 #ifdef __CUDACC__
-#include <thrust/device_vector.h>
-#include <thrust/sort.h>
+#include <visionaray/cuda/device_vector.h>
+#include <visionaray/cuda/safe_call.h>
+#include <cub/cub.cuh>
 #endif
 
 #include <visionaray/aligned_vector.h>
@@ -45,6 +46,15 @@ inline unsigned clz(unsigned val)
 }
 
 #ifdef __CUDACC__
+
+struct CustomLess
+{
+    template <typename DataType>
+    VSNRAY_GPU_FUNC bool operator()(DataType const& lhs, DataType const& rhs)
+    {
+        return lhs < rhs;
+    }
+};
 
 //-------------------------------------------------------------------------------------------------
 // Stolen from https://github.com/treecode/Bonsai/blob/master/runtime/profiling/derived_atomic_functions.h
@@ -183,15 +193,18 @@ inline vec2i determine_range(prim_ref* refs, int num_prims, int i, int& split)
 
 struct node
 {
-    VSNRAY_GPU_FUNC node()
-        : bbox(vec3(numeric_limits<float>::max()), vec3(-numeric_limits<float>::max()))
+    VSNRAY_GPU_FUNC void init()
     {
+        bbox = aabb(vec3(numeric_limits<float>::max()), vec3(-numeric_limits<float>::max()));
+        left = -1;
+        right = -1;
+        parent = -1;
     }
 
     aabb bbox;
-    int left = -1;
-    int right = -1;
-    int parent = -1;
+    int left;
+    int right;
+    int parent;
 };
 
 
@@ -252,6 +265,16 @@ static __global__ void assign_morton_codes(
                 static_cast<unsigned>(centroid.y),
                 static_cast<unsigned>(centroid.z)
                 );
+    }
+}
+
+static __global__ void init_nodes(node* nodes, size_t num_nodes)
+{
+    size_t index = blockIdx.x * size_t(blockDim.x) + threadIdx.x;
+
+    if (index < num_nodes)
+    {
+        nodes[index].init();
     }
 }
 
@@ -329,7 +352,7 @@ static __global__ void assign_node_bounds(
     // Atomically combine child bounding boxes and update parents
     int next = leaves[index].parent;
 
-    while (next >= 0)
+    while (inner && next >= 0)
     {
         atomicMin(&inner[next].bbox.min.x, leaves[index].bbox.min.x);
         atomicMin(&inner[next].bbox.min.y, leaves[index].bbox.min.y);
@@ -395,8 +418,17 @@ static __global__ void collapse(
     int curr = static_cast<int>(num_inner + index);
 
     // Insert leaf
-    int off_leaf = bvh_node_index(curr, leaves[index].parent);
-    bvh_nodes[off_leaf].set_leaf(leaves[index].bbox, prim_refs[index].id, 1);
+    if (leaves[index].parent >= 0 && num_inner > 0)
+    {
+        int off_leaf = bvh_node_index(curr, leaves[index].parent);
+        bvh_nodes[off_leaf].set_leaf(leaves[index].bbox, prim_refs[index].id, 1);
+    }
+    else
+    {
+        // Leaf itself is the root node!
+        bvh_nodes[0].set_leaf(leaves[index].bbox, prim_refs[0].id, 1);
+        return;
+    }
 
     if (index >= num_inner)
     {
@@ -416,6 +448,21 @@ static __global__ void collapse(
     bvh_nodes[off_inner].set_inner(inner[index].bbox, off_first, 0, 0);
 
     auto bbox = bvh_nodes[off_inner].get_bounds();
+}
+
+static __global__ void sequence(
+        unsigned* indices,    // OUT: 0,1,2,.. indices
+        unsigned  num_indices // IN:  number of indices
+        )
+{
+    unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (index >= num_indices)
+    {
+        return;
+    }
+
+    indices[index] = index;
 }
 
 #endif // __CUDACC__
@@ -616,8 +663,20 @@ struct lbvh_builder
     // of BVHs octrees and k-d trees (2012).
     //
 
-    thrust::device_vector<detail::lbvh::prim_ref> d_prim_refs;
-    thrust::device_vector<aabb> d_prim_bounds;
+    cuda::device_vector<detail::lbvh::prim_ref> d_prim_refs;
+    cuda::device_vector<aabb> d_prim_bounds;
+
+    cudaStream_t copy_stream{0};
+
+    lbvh_builder()
+    {
+        CUDA_SAFE_CALL(cudaStreamCreate(&copy_stream));
+    }
+
+    ~lbvh_builder()
+    {
+        CUDA_SAFE_CALL(cudaStreamDestroy(copy_stream));
+    }
 
     template <typename P>
     cuda_index_bvh<P> build(cuda_index_bvh<P> /* */, P* primitives, size_t num_prims)
@@ -626,6 +685,11 @@ struct lbvh_builder
 
         cuda_index_bvh<P> tree(primitives, num_prims);
 
+        if (primitives == nullptr || num_prims == 0)
+        {
+            return tree;
+        }
+
         P* first = primitives;
         P* last = primitives + num_prims;
 
@@ -633,22 +697,22 @@ struct lbvh_builder
         // Scene and centroid bounding boxes
         aabb invalid;
         invalid.invalidate();
-        thrust::device_vector<aabb> bounds(2, invalid);
+        cuda::device_vector<aabb> bounds(2, invalid);
 
-        aabb* scene_bounds_ptr = thrust::raw_pointer_cast(bounds.data());
-        aabb* centroid_bounds_ptr = thrust::raw_pointer_cast(bounds.data() + 1);
+        aabb* scene_bounds_ptr = bounds.data();
+        aabb* centroid_bounds_ptr = bounds.data() + 1;
 
 
         // Compute primitive bounding boxes and centroids
         d_prim_bounds.resize(last - first);
-        thrust::device_vector<vec3> centroids(last - first);
+        cuda::device_vector<vec3> centroids(last - first);
 
         {
             size_t num_threads = 1024;
 
             compute_bounds_and_centroids<<<div_up(num_prims, num_threads), num_threads>>>(
-                    thrust::raw_pointer_cast(d_prim_bounds.data()),
-                    thrust::raw_pointer_cast(centroids.data()),
+                    d_prim_bounds.data(),
+                    centroids.data(),
                     scene_bounds_ptr,
                     centroid_bounds_ptr,
                     primitives,
@@ -663,27 +727,64 @@ struct lbvh_builder
             size_t num_threads = 1024;
 
             assign_morton_codes<<<div_up(num_prims, num_threads), num_threads>>>(
-                    thrust::raw_pointer_cast(d_prim_refs.data()),
-                    thrust::raw_pointer_cast(centroids.data()),
+                    d_prim_refs.data(),
+                    centroids.data(),
                     centroid_bounds_ptr,
                     num_prims
                     );
         }
 
         // Sort prim refs by morton codes
-        thrust::stable_sort(thrust::device, d_prim_refs.begin(), d_prim_refs.end());
+        void* d_temp_storage = nullptr;
+        size_t temp_storage_bytes = 0;
+        cub::DeviceMergeSort::StableSortKeys(
+            d_temp_storage,
+            temp_storage_bytes,
+            d_prim_refs.data(),
+            d_prim_refs.size(),
+            detail::CustomLess()
+            );
+        CUDA_SAFE_CALL(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+        cub::DeviceMergeSort::StableSortKeys(
+            d_temp_storage,
+            temp_storage_bytes,
+            d_prim_refs.data(),
+            d_prim_refs.size(),
+            detail::CustomLess()
+            );
+        CUDA_SAFE_CALL(cudaFree(d_temp_storage));
 
         // Use Karras' radix tree algorithm to build hierarchy
-        thrust::device_vector<node> inner(num_prims - 1);
-        thrust::device_vector<node> leaves(num_prims);
+        cuda::device_vector<node> inner(num_prims - 1);
+        cuda::device_vector<node> leaves(num_prims);
+
+        {
+            size_t num_threads = 1024;
+
+            size_t num_inner = inner.size();
+            if (num_inner > 0)
+            {
+                init_nodes<<<div_up(num_inner, num_threads), num_threads>>>(
+                        inner.data(),
+                        num_inner
+                        );
+            }
+
+            size_t num_leaves = leaves.size();
+            assert(num_leaves > 0); // should have at least one leaf node!
+            init_nodes<<<div_up(num_leaves, num_threads), num_threads>>>(
+                    leaves.data(),
+                    num_leaves
+                    );
+        }
 
         {
             size_t num_threads = 1024;
 
             build_hierarchy<<<div_up(num_prims, num_threads), num_threads>>>(
-                    thrust::raw_pointer_cast(inner.data()),
-                    thrust::raw_pointer_cast(leaves.data()),
-                    thrust::raw_pointer_cast(d_prim_refs.data()),
+                    inner.data(),
+                    leaves.data(),
+                    d_prim_refs.data(),
                     num_prims
                     );
         }
@@ -695,10 +796,10 @@ struct lbvh_builder
             size_t num_threads = 1024;
 
             assign_node_bounds<<<div_up(num_prims, num_threads), num_threads>>>(
-                    thrust::raw_pointer_cast(inner.data()),
-                    thrust::raw_pointer_cast(leaves.data()),
-                    thrust::raw_pointer_cast(d_prim_bounds.data()),
-                    thrust::raw_pointer_cast(d_prim_refs.data()),
+                    inner.data(),
+                    leaves.data(),
+                    d_prim_bounds.data(),
+                    d_prim_refs.data(),
                     num_prims
                     );
         }
@@ -709,20 +810,35 @@ struct lbvh_builder
             size_t num_threads = 1024;
 
             collapse<<<div_up(num_prims, num_threads), num_threads>>>(
-                    thrust::raw_pointer_cast(tree.nodes().data()),
-                    thrust::raw_pointer_cast(inner.data()),
-                    thrust::raw_pointer_cast(leaves.data()),
-                    thrust::raw_pointer_cast(d_prim_refs.data()),
+                    tree.nodes().data(),
+                    inner.data(),
+                    leaves.data(),
+                    d_prim_refs.data(),
                     num_prims
                     );
         }
 
         // Copy primitives to BVH (device to device copy!)
         tree.primitives().resize(num_prims);
-        thrust::copy(thrust::device, first, last, tree.primitives().begin());
+        CUDA_SAFE_CALL(cudaMemcpyAsync(
+            tree.primitives().begin(),
+            first,
+            num_prims * sizeof(P),
+            cudaMemcpyDefault,
+            copy_stream
+            ));
+        CUDA_SAFE_CALL(cudaStreamSynchronize(copy_stream));
 
         // Assign 0,1,2,3,.. indices
-        thrust::sequence(thrust::device, tree.indices().begin(), tree.indices().end());
+        {
+
+            size_t num_threads = 1024;
+
+            sequence<<<div_up(tree.indices().size(), num_threads), num_threads>>>(
+                    tree.indices().data(),
+                    tree.indices().size()
+                    );
+        }
 
         return tree;
     }

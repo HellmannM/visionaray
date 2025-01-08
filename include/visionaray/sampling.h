@@ -136,6 +136,15 @@ inline vector<3, T> uniform_sample_sphere(T const& u1, T const& u2)
     return vector<3, T>(r * cos(phi), r * sin(phi), z);
 }
 
+template <typename T>
+VSNRAY_FUNC
+inline vector<3, T> uniform_sample_cone(T const& u1, T const& u2, T const& cos_theta_max)
+{
+    T cos_theta = (T(1.0) - u1) + u1 * cos_theta_max;
+    T sin_theta = sqrt(T(1.0) - cos_theta * cos_theta);
+    T phi = u2 * T(2.0) * constants::pi<T>();
+    return vector<3, T>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+}
 
 //-------------------------------------------------------------------------------------------------
 // Sample a random light
@@ -233,6 +242,7 @@ light_sample<T> sample_random_light(Lights begin, Lights end, vector<3, T> const
     array<vector<3, float>, simd::num_elements<T>::value> normals;
     float* area = reinterpret_cast<float*>(&result.area);
     int* delta_light = reinterpret_cast<int*>(&result.delta_light);
+    float* pdf = reinterpret_cast<float*>(&result.pdf);
 
     for (unsigned i = 0; i < simd::num_elements<T>::value; ++i)
     {
@@ -246,6 +256,7 @@ light_sample<T> sample_random_light(Lights begin, Lights end, vector<3, T> const
         normals[i] = ls.normal;
         area[i] = ls.area;
         delta_light[i] = ls.delta_light ? 0xFFFFFFFF : 0x00000000;
+        pdf[i] = ls.pdf;
     }
 
     result.dir = simd::pack(dir);

@@ -197,6 +197,17 @@ inline matrix<3, 3, T> matrix<3, 3, T>::scaling(T const& x, T const& y, T const&
 
 template <typename T>
 MATH_FUNC
+inline matrix<3, 3, T> operator+(matrix<3, 3, T> const& a, matrix<3, 3, T> const& b)
+{
+    return matrix<3, 3, T>(
+            a(0, 0) + b(0, 0), a(1, 0) + b(1, 0), a(2, 0) + b(2, 0),
+            a(0, 1) + b(0, 1), a(1, 1) + b(1, 1), a(2, 1) + b(2, 1),
+            a(0, 2) + b(0, 2), a(1, 2) + b(1, 2), a(2, 2) + b(2, 2)
+            );
+}
+
+template <typename T>
+MATH_FUNC
 inline matrix<3, 3, T> operator*(matrix<3, 3, T> const& a, matrix<3, 3, T> const& b)
 {
     return matrix<3, 3, T>(
@@ -268,6 +279,23 @@ inline bool operator!=(matrix<3, 3, T> const& a, matrix<3, 3, T> const& b)
 //-------------------------------------------------------------------------------------------------
 // Geometric functions
 //
+
+template <typename T>
+MATH_FUNC
+inline T determinant(matrix<3, 3, T> const& m)
+{
+    T a00 = det2(m(1, 1), m(1, 2), m(2, 1), m(2, 2));
+    T a01 = det2(m(1, 0), m(1, 2), m(2, 0), m(2, 2));
+    T a02 = det2(m(1, 0), m(1, 1), m(2, 0), m(2, 1));
+    T a10 = det2(m(0, 1), m(0, 2), m(2, 1), m(2, 2));
+    T a11 = det2(m(0, 0), m(0, 2), m(2, 0), m(2, 2));
+    T a12 = det2(m(0, 0), m(0, 1), m(2, 0), m(2, 1));
+    T a20 = det2(m(0, 1), m(0, 2), m(1, 1), m(1, 2));
+    T a21 = det2(m(0, 0), m(0, 2), m(1, 0), m(1, 2));
+    T a22 = det2(m(0, 0), m(0, 1), m(1, 0), m(1, 1));
+
+    return m(0, 0) * a00 - m(0, 1) * a01 + m(0, 2) * a02;
+}
 
 template <typename T>
 MATH_FUNC

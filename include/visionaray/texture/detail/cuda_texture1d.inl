@@ -1,13 +1,13 @@
 // This file is distributed under the MIT license.
 // See the LICENSE file for details.
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <utility>
 
 #include "../../cuda/array.h"
 #include "../../cuda/texture_object.h"
+#include "../../array.h"
 
 namespace visionaray
 {
@@ -54,12 +54,12 @@ public:
     // Construct from pointer to host data
     template <typename U>
     cuda_texture(
-            U const*                                data,
-            size_t                                  w,
-            std::array<tex_address_mode, 1> const&  address_mode,
-            tex_filter_mode const&                  filter_mode,
-            tex_color_space const&                  color_space = RGB,
-            bool                                    normalized_coords = true
+            U const*                           data,
+            size_t                             w,
+            array<tex_address_mode, 1> const&  address_mode,
+            tex_filter_mode const&             filter_mode,
+            tex_color_space const&             color_space = RGB,
+            bool                               normalized_coords = true
             )
         : width_(w)
         , address_mode_(address_mode)
@@ -250,6 +250,47 @@ public:
         }
     }
 
+    // reset from host texture:
+    template <typename U>
+    void reset(texture<U, 1> const& host_tex)
+    {
+        if (!(*this) ||
+            width_ != host_tex.width() ||
+            address_mode_ !=  host_tex.get_address_mode() ||
+            filter_mode_ !=  host_tex.get_filter_mode() ||
+            color_space_ !=  host_tex.get_color_space() ||
+            normalized_coords_ !=  host_tex.get_normalized_coords())
+        {
+            width_ = host_tex.width();
+            address_mode_ =  host_tex.get_address_mode();
+            filter_mode_ =  host_tex.get_filter_mode();
+            color_space_ =  host_tex.get_color_space();
+            normalized_coords_ =  host_tex.get_normalized_coords();
+
+            if (width_ == 0)
+            {
+                return;
+            }
+
+            cudaChannelFormatDesc desc = cudaCreateChannelDesc<cuda_type>();
+
+            if ( array_.allocate(desc, width_) != cudaSuccess )
+            {
+                return;
+            }
+        }
+
+        if ( upload_data(host_tex.data()) != cudaSuccess )
+        {
+            return;
+        }
+
+        if ( init_texture_object() != cudaSuccess )
+        {
+            return;
+        }
+    }
+
     template <typename U>
     void reset(U const* data)
     {
@@ -279,7 +320,7 @@ public:
         init_texture_object();
     }
 
-    void set_address_mode(std::array<tex_address_mode, 1> const& mode)
+    void set_address_mode(array<tex_address_mode, 1> const& mode)
     {
         address_mode_ = mode;
 
@@ -293,7 +334,7 @@ public:
         return address_mode_[index];
     }
 
-    std::array<tex_address_mode, 1> const& get_address_mode() const
+    array<tex_address_mode, 1> const& get_address_mode() const
     {
         return address_mode_;
     }
@@ -341,16 +382,16 @@ public:
 
 private:
 
-    cuda::array                     array_;
+    cuda::array                array_;
 
-    cuda::texture_object            texture_obj_;
+    cuda::texture_object       texture_obj_;
 
-    size_t                          width_;
+    size_t                     width_;
 
-    std::array<tex_address_mode, 1> address_mode_;
-    tex_filter_mode                 filter_mode_;
-    tex_color_space                 color_space_ = RGB;
-    bool                            normalized_coords_ = true;
+    array<tex_address_mode, 1> address_mode_;
+    tex_filter_mode            filter_mode_;
+    tex_color_space            color_space_ = RGB;
+    bool                       normalized_coords_ = true;
 
 
     cudaError_t upload_data(T const* data)

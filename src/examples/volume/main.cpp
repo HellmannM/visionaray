@@ -14,13 +14,13 @@
 
 #include <visionaray/texture/texture.h>
 
-#include <visionaray/cpu_buffer_rt.h>
 #include <visionaray/pinhole_camera.h>
 #include <visionaray/scheduler.h>
 
 #include <common/manip/arcball_manipulator.h>
 #include <common/manip/pan_manipulator.h>
 #include <common/manip/zoom_manipulator.h>
+#include <common/cpu_buffer_rt.h>
 #include <common/viewer_glut.h>
 
 using namespace visionaray;
@@ -66,7 +66,7 @@ struct renderer : viewer_type
         : viewer_type(512, 512, "Visionaray Volume Rendering Example")
         , bbox({ -1.0f, -1.0f, -1.0f }, { 1.0f, 1.0f, 1.0f })
         , host_sched(8)
-        , volume({{2, 2, 2}})
+        , volume(array<unsigned, 3>{{2, 2, 2}})
         , transfunc(4)
     {
         volume.reset(voldata);

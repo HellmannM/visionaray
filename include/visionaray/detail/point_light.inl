@@ -34,8 +34,6 @@ template <typename Generator, typename U>
 VSNRAY_FUNC
 inline light_sample<U> point_light<T>::sample(vector<3, U> const& reference_point, Generator& gen) const
 {
-    VSNRAY_UNUSED(reference_point);
-
     light_sample<U> result;
 
     auto pos = position();
@@ -50,6 +48,9 @@ inline light_sample<U> point_light<T>::sample(vector<3, U> const& reference_poin
             ) );
     result.area = U(1.0);
     result.delta_light = true;
+
+    // Compute PDF
+    result.pdf = U(1.0);
 
     return result;
 }

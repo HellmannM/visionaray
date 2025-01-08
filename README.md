@@ -30,21 +30,20 @@ Build requirements
     tested with Microsoft Visual Studio 2015 VC14 for x64)
 
 - [CMake][1] version 3.1.3 or newer
-- [OpenGL][12]
-- [GLEW][3]
 - [NVIDIA CUDA Toolkit][4] (optional)
 
 - Libraries need to ship with C/C++ header files (developer packages)
-- The OpenGL and GLEW dependency can optionally be deactivated by setting `VSNRAY_GRAPHICS_API=None` with CMake
 
 To compile the viewer and the [examples](/src/examples), the following additional packages are needed or recommended:
 
 - [Boost][2]
+- [GLEW][3]
 - [GLUT][5] or [FreeGLUT][6]
 - [Libjpeg][7] (optional)
 - [Libpng][8] (optional)
 - [LibTIFF][9] (optional)
 - [OpenEXR][10] (optional)
+- [OpenGL][12]
 - [Ptex][13] (optional)
 
 
@@ -74,6 +73,11 @@ See the [Getting Started Guide](https://github.com/szellmann/visionaray/wiki/Get
 
 The "CMake -> Visual Studio Solution" code path is tested from time to time. Visionaray is primarily developed on Linux and Mac OS, though, so you may encounter the occasional "Commit XY breaks builds on Windows" etc.
 On Windows, use CMake to generate a Visual Studio solution file that can be loaded by the IDE, or compiled on the command line using `msbuild.exe`.
+
+ANARI "Device" (separate repo!)
+-------------------------------
+
+There's a new, under heavy development ANARI back-end (a.k.a. "device") now, which lives on a separate repo, under [https://github.com/szellmann/anari-visionaray](https://github.com/szellmann/anari-visionaray). ANARI allows one to use the renderer within 3rd-party apps such as ParaView.
 
 Visionaray Viewer
 -----------------

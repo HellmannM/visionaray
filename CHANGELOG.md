@@ -1,13 +1,97 @@
 ## [Unreleased]
 ### Added
+- Added support for 4-wide BVHs on the CPU. This currently only
+works with index_bvh<>. Uses the SIMD traversal algorithm from Afra
+2013, yet (so far) only for 4-wide simd only.
+
+### Changed
+- Made pointer_storage and texture_ref trivially constructible.
+- Fixed some bugs in the GPU LBVH builder that would cause data
+races otherwise.
+
+### Removed
+- Support for multi-hit BVH traversal was dropped, in favor of less
+complicated traversal routines.
+- Support for custom update conditions in trafversal routine was
+dropped.
+
+## [0.4.2] - 2024-06-30
+### Added
+- Experimental support for AMD's HIP GPGPU language. Tested with
+the anari-visionaray ANARI device.
+
+### Fixed
+- On BVH traversal, hit_record's isect_pos member gets updated.
+This is crucial for correctly implementing local shading operations.
+
+## [0.4.1] - 2024-06-05
+### Changed
+- The Visionaray library is header only now.
+- Software texture types and functions can be compiled for device.
+
+## [0.4.0] - 2024-06-05
+### Changed
+- Getting rid of OpenGL in the core library, moved to common
+(apps who use cpu_buffer_rt, pixel_unpack_buffer_rt, etc. now
+have to use visionaray::common).
+- Optimized BVH traversal on GPU (simpler, and seemingly faster
+box test; box test manually inlined into intersect())
+- Update build system to adopt modern cmake. Now everything's a
+target.
+
+## [0.3.5] - 2024-04-17
+### Added
+- Compile option VSNRAY_NO_SIMD that the user can set. Then, the
+public visionaray headers will not include any gcc intrinsic header
+files. Useful in cases where these cause compiler issues.
+- Public cuda_texture.h header, to include from CUDA code that
+uses the runtime API but is not compiled with nvcc.
+
+### Changed
+- Internally use own algos and data structures in favor of thrust.
+- CUDA 2D textures can now be reset using a device pointer.
+
+### Removed
+- counting_sort functions that were never used.
+
+## [0.3.4] - 2023-12-27
+### Added
+- Convert from PF_RG8 to PF_RGBA8, to support RG textures.
+
+## [0.3.3] - 2023-12-27
+### Added
+- Macro CUDA_SAFE_CALL_X() terminates the app if code != cudaSucess.
+
+### Fixed
+- When swizzling from PF_Rxx to PF_RGByy, set G and B to 0, not R.
+- Fixed a potential division by zero in th Cook-Torrance BRDF
+implementation.
+
+## [0.3.2] - 2023-12-21
+### Added
+- visionarayConfigVersion.cmake to determine the version.
+
+### Fixed
+- Accidentally specified the wrong version.
+
+## [0.3.1] - 2023-12-21
+### Added
+- Version is (also) specified via CMake now.
+- Allow CMake install using config scripts.
 - Added cylinder as built-in primitive.
 
 ### Changed
+- Scheduler's scissorBox feature has been replaced with image_region
+on the camera.
 - Light sample struct has changed, to no longer store the position,
 but instead, a direction and distance.
 - An accumulation buffer was now added to the builtin render targets
 where colors are blended in. For blending kernels, the accumulation
 buffer pixel format needs to be specified.
+
+### Fixed
+- Fixed an issue where texture coordinates close to an integer were
+accidentally truncated to the next lower integer.
 
 ## [0.3.0] - 2021-12-25
 ### Added

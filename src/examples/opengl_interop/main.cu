@@ -22,12 +22,7 @@
 
 #include <visionaray/detail/platform.h>
 
-#include <visionaray/gl/handle.h>
-#include <visionaray/gl/program.h>
-#include <visionaray/gl/shader.h>
-
 #include <visionaray/bvh.h>
-#include <visionaray/pixel_unpack_buffer_rt.h>
 #include <visionaray/generic_material.h>
 #include <visionaray/kernels.h>
 #include <visionaray/material.h>
@@ -38,7 +33,11 @@
 #include <common/manip/arcball_manipulator.h>
 #include <common/manip/pan_manipulator.h>
 #include <common/manip/zoom_manipulator.h>
+#include <common/gl/handle.h>
+#include <common/gl/program.h>
+#include <common/gl/shader.h>
 #include <common/gl_debug_callback.h>
+#include <common/pixel_unpack_buffer_rt.h>
 #include <common/png_image.h>
 #include <common/viewer_glut.h>
 
@@ -202,7 +201,10 @@ struct renderer : viewer_type
 
                         aabb box(vec3(-0.23), vec3(0.23));
                         auto boxverts = compute_vertices(box);
-                        mat3 rot = mat3::rotation(normalize(vec3(drand48(), drand48(), drand48())), drand48());
+                        mat3 rot = mat3::rotation(normalize(
+                            vec3((float)drand48(), (float)drand48(), (float)drand48())),
+                            (float)drand48()
+                            );
                         for (auto& v : boxverts)
                         {
                             v = rot * v;
@@ -217,12 +219,12 @@ struct renderer : viewer_type
                             vec2 texcoord;
                         };
 
-                        vec3 colors[6] = { { drand48(), drand48(), drand48() },
-                                           { drand48(), drand48(), drand48() },
-                                           { drand48(), drand48(), drand48() },
-                                           { drand48(), drand48(), drand48() },
-                                           { drand48(), drand48(), drand48() },
-                                           { drand48(), drand48(), drand48() } };
+                        vec3 colors[6] = { { (float)drand48(), (float)drand48(), (float)drand48() },
+                                           { (float)drand48(), (float)drand48(), (float)drand48() },
+                                           { (float)drand48(), (float)drand48(), (float)drand48() },
+                                           { (float)drand48(), (float)drand48(), (float)drand48() },
+                                           { (float)drand48(), (float)drand48(), (float)drand48() },
+                                           { (float)drand48(), (float)drand48(), (float)drand48() } };
 
                         vertex verts[24] = {
                             { center, boxverts[0], vec3(0,0,+1), colors[0], vec2(0,-0.21) },

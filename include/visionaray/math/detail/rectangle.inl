@@ -86,6 +86,25 @@ inline void rectangle<min_max_layout<2, T>, T>::insert(rectangle<min_max_layout<
 }
 
 
+//-------------------------------------------------------------------------------------------------
+// Comparisons
+//
+
+template <typename T>
+MATH_FUNC
+bool operator==(rectangle<min_max_layout<2, T>, T> const& a, rectangle<min_max_layout<2, T>, T> const& b)
+{
+    return a.min == b.min && a.max == b.max;
+}
+
+template <typename T>
+MATH_FUNC
+bool operator!=(rectangle<min_max_layout<2, T>, T> const& a, rectangle<min_max_layout<2, T>, T> const& b)
+{
+    return !(a == b);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 // rectangle : xywh_layout
 //
@@ -120,14 +139,14 @@ inline T const* rectangle<xywh_layout<T>, T>::data() const
 
 template <typename T>
 MATH_FUNC
-inline T& rectangle<xywh_layout<T>, T>::operator[](size_t i)
+inline T& rectangle<xywh_layout<T>, T>::operator[](int i)
 {
     return data()[i];
 }
 
 template <typename T>
 MATH_FUNC
-inline T const& rectangle<xywh_layout<T>, T>::operator[](size_t i) const
+inline T const& rectangle<xywh_layout<T>, T>::operator[](int i) const
 {
     return data()[i];
 }

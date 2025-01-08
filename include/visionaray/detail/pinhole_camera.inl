@@ -104,8 +104,12 @@ template <typename R, typename T>
 VSNRAY_FUNC
 inline R pinhole_camera::primary_ray(R /* */, T const& x, T const& y, T const& width, T const& height) const
 {
-    T u = T(2.0) * (x + T(0.5)) / width  - T(1.0);
-    T v = T(2.0) * (y + T(0.5)) / height - T(1.0);
+    vector<2, T> screen((x + T(0.5)) / width, (y + T(0.5)) / height);
+    screen = (vector<2, T>(1.0) - screen) * vector<2, T>(image_region_.min)
+                                 + screen * vector<2, T>(image_region_.max);
+
+    T u = T(2.0) * screen.x - T(1.0);
+    T v = T(2.0) * screen.y - T(1.0);
 
     R r;
     r.ori = vector<3, T>(eye_);
@@ -120,6 +124,7 @@ inline bool operator==(pinhole_camera const& a, pinhole_camera const& b)
     return a.get_view_matrix() == b.get_view_matrix()
         && a.get_proj_matrix() == b.get_proj_matrix()
         && a.get_viewport() == b.get_viewport()
+        && a.get_image_region() == b.get_image_region()
         && a.fovy() == b.fovy()
         && a.aspect() == b.aspect()
         && a.z_near() == b.z_near()

@@ -6,6 +6,7 @@
 #ifndef VSNRAY_CUDA_SAFE_CALL_H
 #define VSNRAY_CUDA_SAFE_CALL_H 1
 
+#include <cstdlib>
 #include <cstdio>
 
 #include <cuda_runtime_api.h>
@@ -19,17 +20,43 @@
 #else
 #define CUDA_SAFE_CALL(FUNC) FUNC
 #endif
+#define CUDA_SAFE_CALL_X(FUNC) { visionaray::cuda::safe_call((FUNC), __FILE__, __LINE__, true); }
+
+
+//-------------------------------------------------------------------------------------------------
+// Macro to print last cuda error except if it was `Success'
+//
+
+#define CUDA_PRINT_LAST_ERROR() { visionaray::cuda::print_last_error(__FILE__, __LINE__, true); }
 
 namespace visionaray
 {
 namespace cuda
 {
 
-inline void safe_call(cudaError_t code, char const* file, int line)
+inline void safe_call(cudaError_t code, char const* file, int line, bool fatal = false)
 {
     if (code != cudaSuccess)
     {
         fprintf(stderr, "CUDA error: %s %s:%i\n", cudaGetErrorString(code), file, line);
+        if (fatal)
+        {
+            exit(code);
+        }
+    }
+}
+
+inline void print_last_error(char const* file, int line, bool sync = true)
+{
+    if (sync)
+    {
+        cudaDeviceSynchronize();
+    }
+
+    cudaError_t code = cudaGetLastError();
+    if (code != cudaSuccess)
+    {
+        fprintf(stderr, "LAST CUDA error: %s %s:%i\n", cudaGetErrorString(code), file, line);
     }
 }
 

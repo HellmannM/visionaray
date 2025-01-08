@@ -413,6 +413,37 @@ inline matrix<4, 4, T> transpose(matrix<4, 4, T> const& m)
 
 }
 
+template <typename T>
+MATH_FUNC
+inline matrix<4, 4, T> frustum(
+    const T& left, const T& right, const T& bottom, const T& top, const T& znear, const T& zfar
+    )
+{
+    matrix<4, 4, T> M;
+
+    M(0,0) = (T(2.0)*znear)/(right-left);
+    M(0,1) = T(0.0);
+    M(0,2) = (right+left)/(right-left);
+    M(0,3) = T(0.0);
+
+    M(1,0) = T(0.0);
+    M(1,1) = (T(2.0)*znear)/(top-bottom);
+    M(1,2) = (top+bottom)/(top-bottom);
+    M(1,3) = T(0.0);
+
+    M(2,0) = T(0.0);
+    M(2,1) = T(0.0);
+    M(2,2) = -(zfar+znear)/(zfar-znear);
+    M(2,3) = -(T(2.0)*zfar*znear)/(zfar-znear);
+
+    M(3,0) = T(0.0);
+    M(3,1) = T(0.0);
+    M(3,2) = T(-1.0);
+    M(3,3) = T(0.0);
+
+    return M;
+}
+
 // Return top-left 3x3 matrix
 template <typename T>
 MATH_FUNC
@@ -424,7 +455,7 @@ inline matrix<3, 3, T> top_left(matrix<4, 4, T> const& m)
     {
         for (size_t x = 0; x < 3; ++x)
         {
-            result(x, y) = m(y, x);
+            result(x, y) = m(x, y);
         }
     }
 
