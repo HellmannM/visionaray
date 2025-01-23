@@ -161,3 +161,9 @@ void arcball_manipulator::handle_space_mouse_move(visionaray::space_mouse_event 
 
     camera_manipulator::handle_space_mouse_move(event);
 }
+
+
+void arcball_manipulator::reset_arcball()
+{
+    ball_ = arcball();
+}

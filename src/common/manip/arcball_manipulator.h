@@ -36,6 +36,8 @@ public:
 
     void handle_space_mouse_move(space_mouse_event const& event);
 
+    void reset_arcball();
+
 private:
 
     mouse::buttons buttons_;
