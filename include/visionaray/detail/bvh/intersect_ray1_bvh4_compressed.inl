@@ -24,56 +24,6 @@
 namespace visionaray
 {
 
-template <typename It, typename Comp>
-inline void bubble_sort(It first, It last, Comp comp)
-{
-    int n = last - first;
-
-    for (int i = 0; i < n - 1; ++i)
-    {
-        bool swapped = false;
-        for (int j = 0; j < n - i - 1; ++j)
-        {
-            if (comp(first[j + 1], first[j]))
-            {
-                auto temp = first[j];
-                first[j] = first[j + 1];
-                first[j + 1] = temp;
-                swapped = true;
-            }
-        }
-
-        if (!swapped)
-        {
-            break;
-        }
-    }
-}
-
-#if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
-
-// From SSE2Neon:
-inline int movemask(uint32x4_t const& input)
-{
-    static const int32_t shift[4] = {0, 1, 2, 3};
-    uint32x4_t tmp = vshrq_n_u32(input, 31);
-    return vaddvq_u32(vshlq_u32(tmp, vld1q_s32(shift)));
-}
-
-#elif VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_SSE2)
-
-inline int movemask(__m128i const& input)
-{
-    return _mm_movemask_ps(_mm_castsi128_ps(input));
-}
-
-#endif
-
-//-----------------------------------------------------------------------------
-// SSE and NEON traversal based on:
-// https://afra.dev/publications/Afra2013Incoherent.pdf
-//
-
 template <
     detail::traversal_type Traversal,
     typename R,
@@ -82,7 +32,7 @@ template <
     typename T = typename R::scalar_type
     >
 VSNRAY_FUNC
-inline auto intersect_ray1_bvh4(
+inline auto intersect_ray1_bvh4_compressed(
         R const&     ray,
         BVH const&   b,
         Intersector& isect
@@ -97,15 +47,17 @@ inline auto intersect_ray1_bvh4(
 
     HR result;
 
+    using N = bvh_compressed_node<4>;
+
     struct stack_entry
     {
-        int64_t addr;
+        N::Child addr;
         unsigned dist;
     };
 
     stack_entry stack[64];
     char ptr = 0;
-    stack[ptr++] = { 0, 0 }; // root node
+    stack[ptr++] = { { 0, 0 }, 0 }; // root node
 
     auto inv_dir = T(1.0) / ray.dir;
 
@@ -114,27 +66,55 @@ next:
     while (ptr > 0)
     {
         auto se = stack[--ptr];
-        int64_t addr = se.addr;
+        N::Child addr = se.addr;
         unsigned dist = se.dist;
 
         // while node does not contain primitives
         //     traverse to the next node
 
-        while (addr >= 0)
+        while (addr.num_prims == 0)
         {
             if (*((unsigned*)&result.t) < dist)
             {
                 goto next;
             }
 
-            const auto &node = b.node(addr);
+            const auto &node = b.node(addr.id);
 
             using F = simd::float4;
 
             basic_aabb<F> aabbN;
-            node.bounds_as_floatN(aabbN);
 
-            auto hrN = intersect(ray, aabbN, inv_dir);
+            aabbN.min.x = convert_to_float(simd::sign_extend(node.child_bounds.minx));
+            aabbN.min.y = convert_to_float(simd::sign_extend(node.child_bounds.miny));
+            aabbN.min.z = convert_to_float(simd::sign_extend(node.child_bounds.minz));
+
+            aabbN.max.x = convert_to_float(simd::sign_extend(node.child_bounds.maxx));
+            aabbN.max.y = convert_to_float(simd::sign_extend(node.child_bounds.maxy));
+            aabbN.max.z = convert_to_float(simd::sign_extend(node.child_bounds.maxz));
+
+            auto pow2 = [](char e) {
+                unsigned u((e + 127) << 23);
+                return *(float*)&u;
+            };
+
+            // This uses the optimization from the Ylitie paper
+            // transforming the ray into the coordinate system of
+            // the local grid:
+            vec3 P(pow2(node.e[0]), pow2(node.e[1]), pow2(node.e[2]));
+            vector<3, F> local_ori((node.origin - ray.ori) * inv_dir);
+            vector<3, F> local_dir(P * inv_dir);
+
+            hit_record<basic_ray<float>, basic_aabb<F>> hrN;
+            vector<3, F> t1 = aabbN.min * local_dir + local_ori;
+            vector<3, F> t2 = aabbN.max * local_dir + local_ori;
+
+            vector<3, F> tmin = min(t1, t2);
+            vector<3, F> tmax = max(t1, t2);
+
+            hrN.tnear = max(ray.tmin, max(tmin.x, max(tmin.y, tmin.z)));
+            hrN.tfar  = min(ray.tmax, min(tmax.x, min(tmax.y, tmax.z)));
+            hrN.hit   = hrN.tfar >= hrN.tnear;
 
             hrN.hit &= aabbN.min.x <= aabbN.max.x;
 #if VSNRAY_SIMD_ISA_GE(VSNRAY_SIMD_ISA_NEON_FP)
@@ -157,7 +137,6 @@ next:
 
             unsigned* tnear = reinterpret_cast<unsigned*>(&hrN.tnear);
 
-#if 1
             auto bsf = [](int& m) {
                 int i =  __builtin_ctz(m);
                 m &= m-1;
@@ -209,47 +188,13 @@ next:
                 addr = node.children[i1]; dist = tnear[i1];
                 continue;
             }
-#else
-            // Unoptimized code path, keeping this around for the
-            // moment so we can compare:
-
-            unsigned child_count = node.get_num_children();
-
-            unsigned* hit = reinterpret_cast<unsigned*>(&hrN.hit);
-
-            int idx[BVH::Width];
-            for (int i = 0; i < BVH::Width; ++i)
-            {
-                idx[i] = i;
-            }
-
-            bubble_sort(idx, idx + child_count,
-                [&](int i, int j) {
-                    return (hit[i] && hit[j] && tnear[i] < tnear[j]) ||
-                           (hit[i] && !hit[j]);
-                });
-
-            for (int i = 1; i < child_count; ++i)
-            {
-                if (!hit[idx[i]])
-                {
-                    break;
-                }
-
-                stack[ptr++] = node.children[idx[i]];
-            }
-
-            addr = node.children[idx[0]];
-#endif
         }
 
         // while node contains untested primitives
         //     perform a ray-primitive intersection test
 
-        uint64_t first;
-        uint64_t num_prims;
-
-        bvh_multi_node<4>::decode_leaf(addr, first, num_prims);
+        uint64_t first = addr.id;
+        uint64_t num_prims = addr.num_prims;
 
         uint64_t last = first + num_prims;
 
@@ -279,7 +224,6 @@ next:
 
     return result;
 }
-
 //-------------------------------------------------------------------------------------------------
 // Default intersect returns closest hit!
 //
@@ -288,29 +232,29 @@ next:
 
 template <typename R, typename BVH, typename Intersector>
 VSNRAY_FUNC
-inline auto intersect_ray1_bvh4(
+inline auto intersect_ray1_bvh4_compressed(
         R const&     ray,
         BVH const&   b,
         Intersector& isect
         )
-    -> decltype(intersect_ray1_bvh4<detail::ClosestHit>(ray, b, isect))
+    -> decltype(intersect_ray1_bvh4_compressed<detail::ClosestHit>(ray, b, isect))
 {
-    return intersect_ray1_bvh4<detail::ClosestHit>(ray, b, isect);
+    return intersect_ray1_bvh4_compressed<detail::ClosestHit>(ray, b, isect);
 }
 
 // overload w/ default intersector ------------------------
 
 template <typename R, typename BVH>
 VSNRAY_FUNC
-inline auto intersect_ray1_bvh4(R const& ray, BVH const& b)
-    -> decltype(intersect_ray1_bvh4<detail::ClosestHit>(
+inline auto intersect_ray1_bvh4_compressed(R const& ray, BVH const& b)
+    -> decltype(intersect_ray1_bvh4_compressed<detail::ClosestHit>(
             ray,
             b,
             std::declval<default_intersector&>())
             )
 {
     default_intersector isect;
-    return intersect_ray1_bvh4<detail::ClosestHit>(ray, b, isect);
+    return intersect_ray1_bvh4_compressed<detail::ClosestHit>(ray, b, isect);
 }
 
 } // visionaray

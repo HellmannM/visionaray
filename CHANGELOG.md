@@ -1,8 +1,11 @@
 ## [Unreleased]
 ### Added
+- Quantized 4-wide BVH for CPU. Uncompressed is faster to traverse,
+so this is primarily a memory optimization.
 - Added support for 4-wide BVHs on the CPU. This currently only
 works with index_bvh<>. Uses the SIMD traversal algorithm from Afra
 2013, yet (so far) only for 4-wide simd only.
+- Tree optimizer based on Kensler "tree rotation" paper.
 
 ### Changed
 - Made pointer_storage and texture_ref trivially constructible.
