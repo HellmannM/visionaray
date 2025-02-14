@@ -162,6 +162,10 @@ bool png_image::load(std::string const& filename)
 
     switch (num_components)
     {
+    case 1:
+        format_ = bit_depth == 8 ? PF_R8 : PF_R16UI;
+        break;
+
     case 3:
         format_ = bit_depth == 8 ? PF_RGB8 : PF_RGB16UI;
         break;
