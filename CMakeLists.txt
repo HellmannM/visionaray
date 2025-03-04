@@ -18,6 +18,7 @@ list(APPEND CMAKE_MODULE_PATH
 include(CTest)
 enable_testing()
 
+include_directories("/opt/cub/include")
 
 #--------------------------------------------------------------------------------------------------
 # CMake policies to control backward compatible behavior
