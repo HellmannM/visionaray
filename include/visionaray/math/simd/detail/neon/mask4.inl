@@ -17,6 +17,11 @@ VSNRAY_FORCE_INLINE mask4::basic_mask(uint32x4_t const& m)
 {
 }
 
+VSNRAY_FORCE_INLINE mask4::basic_mask(int32x4_t const& m)
+    : i(vreinterpretq_u32_s32(m))
+{
+}
+
 VSNRAY_FORCE_INLINE mask4::basic_mask(bool x, bool y, bool z, bool w)
 {
     VSNRAY_ALIGN(16) unsigned data[4] = {
@@ -51,7 +56,7 @@ VSNRAY_FORCE_INLINE mask4::basic_mask(bool b)
 
 VSNRAY_FORCE_INLINE int4 convert_to_int(mask4 const& a)
 {
-    return a.i;
+    return (int32x4_t)a.i;
 }
 
 

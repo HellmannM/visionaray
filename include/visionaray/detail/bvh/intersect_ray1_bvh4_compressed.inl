@@ -18,8 +18,8 @@
 #include "../tags.h"
 #include "hit_record.h"
 
-#define likely(x)   __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
+// #define likely(x)   __builtin_expect(!!(x), 1)
+// #define unlikely(x) __builtin_expect(!!(x), 0)
 
 namespace visionaray
 {
@@ -59,7 +59,11 @@ inline auto intersect_ray1_bvh4_compressed(
     char ptr = 0;
     stack[ptr++] = { { 0, 0 }, 0 }; // root node
 
-    auto inv_dir = T(1.0) / ray.dir;
+    vector<3, T> inv_dir(
+        select(ray.dir.x != T(0.0), T(1.0) / ray.dir.x, T(FLT_MAX)),
+        select(ray.dir.y != T(0.0), T(1.0) / ray.dir.y, T(FLT_MAX)),
+        select(ray.dir.z != T(0.0), T(1.0) / ray.dir.z, T(FLT_MAX))
+        );
 
     // while ray not terminated
 next:
@@ -138,7 +142,7 @@ next:
             unsigned* tnear = reinterpret_cast<unsigned*>(&hrN.tnear);
 
             auto bsf = [](int& m) {
-                int i =  __builtin_ctz(m);
+                int i =  ctz(m);
                 m &= m-1;
                 return i;
             };

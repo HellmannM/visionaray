@@ -1,4 +1,8 @@
 ## [Unreleased]
+### Fixed
+- Fixed precision issues with thin-lense camera (DoF).
+
+## [0.5.0] - 2025-03-12
 ### Added
 - Quantized 4-wide BVH for CPU. Uncompressed is faster to traverse,
 so this is primarily a memory optimization.
@@ -11,6 +15,7 @@ works with index_bvh<>. Uses the SIMD traversal algorithm from Afra
 - Made pointer_storage and texture_ref trivially constructible.
 - Fixed some bugs in the GPU LBVH builder that would cause data
 races otherwise.
+- Function lerp() becomes deprecated, use lerp_r() instead.
 
 ### Removed
 - Support for multi-hit BVH traversal was dropped, in favor of less

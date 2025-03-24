@@ -7,41 +7,13 @@
 #define VSNRAY_DETAIL_ALIGNED_ALLOCATOR_H 1
 
 #include <cstddef>
+#include <cstdlib>
 #include <new>
 
-#include <visionaray/math/simd/intrinsics.h> // VSNRAY_ARCH
-
-#include "macros.h"
-
-#if VSNRAY_CXX_GCC || VSNRAY_CXX_CLANG
-#if VSNRAY_ARCH == VSNRAY_ARCH_ARM
-
-// TODO:!!!
-
-#include <cstdlib>
-
-namespace visionaray
-{
-
-inline void* _mm_malloc(size_t s, size_t aln)
-{
-    return aligned_alloc(aln, s);
-}
-
-inline void _mm_free(void* ptr)
-{
-    free(ptr);
-}
-
-} // visionaray
-
-#else
-#include <mm_malloc.h>
-#endif
-#else
+#include "compiler.h"
+#if VSNRAY_CXX_MSVC
 #include <malloc.h>
 #endif
-
 
 namespace visionaray
 {
@@ -54,10 +26,7 @@ public:
     typedef T value_type;
     typedef T* pointer;
     typedef const T* const_pointer;
-    typedef T& reference;
-    typedef const T& const_reference;
     typedef size_t size_type;
-    typedef ptrdiff_t difference_type;
 
     aligned_allocator() = default;
 
@@ -76,39 +45,28 @@ public:
         typedef aligned_allocator<U, A> other;
     };
 
-    pointer address(reference r) const
-    {
-        return &r;
-    }
-
-    const_pointer address(const_reference r) const
-    {
-        return &r;
-    }
-
     pointer allocate(size_type n, void* /* hint */ = 0)
     {
+#if VSNRAY_CXX_MSVC
         return (pointer)_mm_malloc(n * sizeof(T), A);
+#else
+        value_type* ptr{nullptr};
+        auto ret = posix_memalign((void**)&ptr, A, sizeof(T) * n);
+        if (ret != 0)
+        {
+            throw std::bad_alloc();
+        }
+        return ptr;
+#endif
     }
 
     void deallocate(pointer p, size_type /* n */)
     {
+#if VSNRAY_CXX_MSVC
         _mm_free(p);
-    }
-
-    size_t max_size() const
-    {
-        return static_cast<size_t>(-1) / sizeof(T);
-    }
-
-    void construct(pointer p, const_reference val)
-    {
-        new(static_cast<void*>(p)) T(val);
-    }
-
-    void destroy(pointer p)
-    {
-        p->T::~T();
+#else
+        std::free(p);
+#endif
     }
 
     bool operator==(aligned_allocator const& /* rhs */) const
