@@ -83,20 +83,36 @@ struct renderer
             cl::init(this->build_strategy)
             ) );
 
-        add_cmdline_option( cl::makeOption<int&>(
+        add_cmdline_option( cl::makeOption<size_t&>(
             cl::Parser<>(),
-            "samples",
-            cl::Desc("Number of shadow rays for ambient occlusion"),
+            "width",
+            cl::Desc("Image width in pixels"),
             cl::ArgRequired,
-            cl::init(this->AO_Samples)
+            cl::init(this->width)
             ) );
 
-        add_cmdline_option( cl::makeOption<float&>(
+        add_cmdline_option( cl::makeOption<size_t&>(
             cl::Parser<>(),
-            "radius",
-            cl::Desc("Ambient occlusion radius"),
+            "height",
+            cl::Desc("Image height in pixels"),
             cl::ArgRequired,
-            cl::init(this->AO_Radius)
+            cl::init(this->height)
+            ) );
+
+        add_cmdline_option( cl::makeOption<size_t&>(
+            cl::Parser<>(),
+            "threads",
+            cl::Desc("Number of threads"),
+            cl::ArgRequired,
+            cl::init(this->num_threads)
+            ) );
+
+        add_cmdline_option( cl::makeOption<size_t&>(
+            cl::Parser<>(),
+            "spp",
+            cl::Desc("Number of samples per pixel"),
+            cl::ArgRequired,
+            cl::init(this->spp)
             ) );
     }
 
@@ -120,8 +136,10 @@ struct renderer
     index_bvh<model::triangle_type>             host_bvh;
     unsigned                                    frame_num       = 0;
 
-    int                                         AO_Samples      = 8;
-    float                                       AO_Radius       = 0.1f;
+    size_t                                      width           = 512;
+    size_t                                      height          = 512;
+    size_t                                      num_threads     = 8;
+    size_t                                      spp             = 8;
 
     cmdline_options                             options;
     support::cl::CmdLine                        cmd;
@@ -129,11 +147,9 @@ struct renderer
     void add_cmdline_option( std::shared_ptr<support::cl::OptionBase> option );
     void init(int argc, char** argv);
     void save_to_png(std::string filename);
-    size_t width() const;
-    size_t height() const;
 
     void render();
-    void on_resize(int w, int h);
+    void resize(int w, int h);
 
 };
 
@@ -180,6 +196,8 @@ void renderer::init(int argc, char** argv)
     cl::expandResponseFiles(args, cl::TokenizeUnix());
 
     cmd.parse(args, false);
+
+    host_sched.reset(num_threads);
 }
 
 void renderer::add_cmdline_option( std::shared_ptr<support::cl::OptionBase> option )
@@ -193,16 +211,18 @@ void renderer::add_cmdline_option( std::shared_ptr<support::cl::OptionBase> opti
 
 void renderer::render()
 {
-    auto uniform_sampler = pixel_sampler::uniform_type{};
+    float alpha = 1.0f / ++frame_num;
+    pixel_sampler::jittered_blend_type jps;
+    jps.spp = 1;
+    jps.sfactor = alpha;
+    jps.dfactor = 1.0f - alpha;
     auto sparams = make_sched_params(
-            uniform_sampler,
+            jps,
             cam,
             host_rt
             );
 
-
     using bvh_ref = index_bvh<model::triangle_type>::bvh_ref;
-
     std::vector<bvh_ref> bvhs;
     bvhs.push_back(host_bvh.ref());
 
@@ -228,7 +248,7 @@ void renderer::render()
             vec4(0.0)
             );
 
-    whitted::kernel<decltype(kparams)> kernel;
+    pathtracing::kernel<decltype(kparams)> kernel;
     kernel.params = kparams;
 
     host_sched.frame(
@@ -238,24 +258,10 @@ void renderer::render()
 }
 
 //-------------------------------------------------------------------------------------------------
-// helpers
-//
-
-size_t renderer::width() const
-{
-    return host_rt.width();
-}
-
-size_t renderer::height() const
-{
-    return host_rt.height();
-}
-
-//-------------------------------------------------------------------------------------------------
 // resize event
 //
 
-void renderer::on_resize(int w, int h)
+void renderer::resize(int w, int h)
 {
     frame_num = 0;
     host_rt.clear_color_buffer();
@@ -273,28 +279,40 @@ void renderer::on_resize(int w, int h)
 void renderer::save_to_png(std::string filename)
 {
     // Swizzle to RGB8 for compatibility with pnm image
-    std::vector<vector<4, unorm<8>>> rgba(width() * height());
-    memcpy(rgba.data(), host_rt.color(), width() * height() * 4);
-    std::vector<vector<3, unorm<8>>> rgb(width() * height());
+    std::vector<vector<4, unorm<8>>> rgba(width * height);
+    memcpy(rgba.data(), host_rt.color(), width * height * 4);
+    std::vector<vector<3, unorm<8>>> rgb(width * height);
     for (size_t i=0; i<rgb.size(); ++i)
     {
         rgb[i] = vector<3, unorm<8>>(rgba[i].x, rgba[i].y, rgba[i].z);
     }
 
-    // Flip horizontally
-    std::vector<vector<3, unorm<8>>> flipped(width() * height());
-    for (int y = 0; y < height(); ++y)
+//    // Flip horizontally
+//    std::vector<vector<3, unorm<8>>> flipped(width * height);
+//    for (int y = 0; y < height; ++y)
+//    {
+//      for (int x = 0; x < width; ++x)
+//      {
+//        auto xx = width - x - 1;
+//        flipped[y * width + x] = rgb[y * width + xx];
+//      }
+//    }
+
+    // Flip
+    std::vector<vector<3, unorm<8>>> flipped(width * height);
+    for (int y = 0; y < height; ++y)
     {
-      for (int x = 0; x < width(); ++x)
+      for (int x = 0; x < width; ++x)
       {
-        auto xx = width() - x - 1;
-        flipped[y * width() + x] = rgb[y * width() + xx];
+        auto xx = width - x - 1;
+        auto yy = height - y - 1;
+        flipped[y * width + x] = rgb[yy * width + xx];
       }
     }
 
     image img(
-        width(),
-        height(),
+        width,
+        height,
         PF_RGB8,
         reinterpret_cast<uint8_t const*>(flipped.data())
         );
@@ -314,7 +332,7 @@ int main(int argc, char** argv)
     try
     {
         rend.init(argc, argv);
-        rend.on_resize(1024, 1024);
+        rend.resize(rend.width, rend.height);
     }
     catch (std::exception const& e)
     {
@@ -342,7 +360,7 @@ int main(int argc, char** argv)
 
     std::cout << "Ready\n";
 
-    float aspect = rend.width() / static_cast<float>(rend.height());
+    float aspect = rend.width / static_cast<float>(rend.height);
 
     rend.cam.perspective(45.0f * constants::degrees_to_radians<float>(), aspect, 0.001f, 1000.0f);
 
@@ -358,8 +376,12 @@ int main(int argc, char** argv)
     }
 
     timer t;
-    rend.render();
-    std::cout << t.elapsed() << "ms\n";
+    for (size_t sample = 1; sample <= rend.spp; ++sample)
+    {
+        rend.render();
+        std::cout << "sample " << sample << ": " << t.elapsed() << "ms\n";
+        t.reset();
+    }
 
     rend.save_to_png("rendered_image.png");
 }
