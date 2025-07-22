@@ -287,17 +287,6 @@ void renderer::save_to_png(std::string filename)
         rgb[i] = vector<3, unorm<8>>(rgba[i].x, rgba[i].y, rgba[i].z);
     }
 
-//    // Flip horizontally
-//    std::vector<vector<3, unorm<8>>> flipped(width * height);
-//    for (int y = 0; y < height; ++y)
-//    {
-//      for (int x = 0; x < width; ++x)
-//      {
-//        auto xx = width - x - 1;
-//        flipped[y * width + x] = rgb[y * width + xx];
-//      }
-//    }
-
     // Flip
     std::vector<vector<3, unorm<8>>> flipped(width * height);
     for (int y = 0; y < height; ++y)
